@@ -1,12 +1,12 @@
 /**
-  * BPMN 变量管理模块
+  * BPMN variable management module
   */
 include "option.dfy"
 module Variables {
   import opened Optional
 
   /**
-    * 变量值类型
+    * variable value type
     */
   datatype VariableValue =
     | StringValue(stringValue: string)
@@ -16,26 +16,26 @@ module Variables {
     | ObjectValue(fields: map<string, VariableValue>)
 
   /**
-    * 变量映射
+    * variable map
     */
   type VariableMap = map<string, VariableValue>
 
   /**
-    * 创建空变量映射
+    * create an empty variable map
     */
   function EmptyVariables(): VariableMap {
     map[]
   }
 
   /**
-    * 设置变量值
+    * set variable value
     */
   function SetVariable(vars: VariableMap, name: string, value: VariableValue): VariableMap {
     vars[name := value]
   }
 
   /**
-    * 获取变量值
+    * get variable value
     */
   function GetVariable(vars: VariableMap, name: string): Option<VariableValue> {
     if name in vars then Some(vars[name]) else None

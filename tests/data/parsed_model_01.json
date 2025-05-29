@@ -1,0 +1,359 @@
+{
+  "model_path": "model_01.bpmn",
+  "main_process": {
+    "name": "Process 01",
+    "id": "Process_1804ck9"
+  },
+  "elements": {
+    "SequenceFlow_0uy1pg3": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0uy1pg3",
+      "name": null,
+      "condition": null,
+      "source": "tdown2",
+      "target": "ExclusiveGateway_0ms7zfc"
+    },
+    "SequenceFlow_0a71cf1": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0a71cf1",
+      "name": null,
+      "condition": null,
+      "source": "StartEvent_1",
+      "target": "t0"
+    },
+    "SequenceFlow_1h2dv1o": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_1h2dv1o",
+      "name": null,
+      "condition": null,
+      "source": "ParallelGateway_0vffee4",
+      "target": "mt"
+    },
+    "SequenceFlow_1jdxquy": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_1jdxquy",
+      "name": null,
+      "condition": null,
+      "source": "t0",
+      "target": "ParallelGateway_05lp38c"
+    },
+    "SequenceFlow_0g56lcu": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0g56lcu",
+      "name": null,
+      "condition": null,
+      "source": "ParallelGateway_05lp38c",
+      "target": "tup"
+    },
+    "SequenceFlow_0snwxlv": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0snwxlv",
+      "name": null,
+      "condition": null,
+      "source": "ParallelGateway_05lp38c",
+      "target": "tdown"
+    },
+    "SequenceFlow_1xhi1kt": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_1xhi1kt",
+      "name": null,
+      "condition": null,
+      "source": "tdown",
+      "target": "ParallelGateway_0vffee4"
+    },
+    "SequenceFlow_1keqevg": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_1keqevg",
+      "name": null,
+      "condition": null,
+      "source": "tup",
+      "target": "ParallelGateway_0vffee4"
+    },
+    "SequenceFlow_0yryyr8": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0yryyr8",
+      "name": null,
+      "condition": null,
+      "source": "ExclusiveGateway_0ms7zfc",
+      "target": "EndEvent_16dmtu6"
+    },
+    "SequenceFlow_0b203rr": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0b203rr",
+      "name": null,
+      "condition": null,
+      "source": "mt",
+      "target": "Task_1xs7acu"
+    },
+    "SequenceFlow_0iwa4bi": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0iwa4bi",
+      "name": "option==1",
+      "condition": "option==1",
+      "source": "ExclusiveGateway_111m58w",
+      "target": "tup2"
+    },
+    "SequenceFlow_01mc012": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_01mc012",
+      "name": null,
+      "condition": null,
+      "source": "tup2",
+      "target": "ExclusiveGateway_0ms7zfc"
+    },
+    "SequenceFlow_0d1prpw": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_0d1prpw",
+      "name": null,
+      "condition": null,
+      "source": "Task_1xs7acu",
+      "target": "ExclusiveGateway_111m58w"
+    },
+    "SequenceFlow_1k3v5iz": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "SequenceFlow_1k3v5iz",
+      "name": null,
+      "condition": null,
+      "default": true,
+      "source": "ExclusiveGateway_111m58w",
+      "target": "tdown2"
+    },
+    "mt": {
+      "class": "ManualTask",
+      "tag": "bpmn:manualTask",
+      "_id": "mt",
+      "name": "Manual Task 2"
+    },
+    "tup2": {
+      "class": "UserTask",
+      "tag": "bpmn:userTask",
+      "_id": "tup2",
+      "name": "Task up",
+      "documentation": "",
+      "form_fields": {}
+    },
+    "tdown2": {
+      "class": "UserTask",
+      "tag": "bpmn:userTask",
+      "_id": "tdown2",
+      "name": "Task down",
+      "documentation": "",
+      "form_fields": {}
+    },
+    "t0": {
+      "class": "UserTask",
+      "tag": "bpmn:userTask",
+      "_id": "t0",
+      "name": "Which option?",
+      "documentation": "",
+      "form_fields": {
+        "option": {
+          "type": "long",
+          "label": "",
+          "validation": {},
+          "properties": {}
+        }
+      }
+    },
+    "tdown": {
+      "class": "UserTask",
+      "tag": "bpmn:userTask",
+      "_id": "tdown",
+      "name": "Down",
+      "documentation": "",
+      "form_fields": {}
+    },
+    "tup": {
+      "class": "UserTask",
+      "tag": "bpmn:userTask",
+      "_id": "tup",
+      "name": "Up",
+      "documentation": "",
+      "form_fields": {}
+    },
+    "Task_1xs7acu": {
+      "class": "ServiceTask",
+      "tag": "bpmn:serviceTask",
+      "_id": "Task_1xs7acu",
+      "name": "Task 3",
+      "connector_fields": {
+        "connector_id": "",
+        "input_variables": {},
+        "output_variables": {}
+      },
+      "input_variables": {},
+      "output_variables": {},
+      "properties_fields": {}
+    },
+    "StartEvent_1": {
+      "class": "StartEvent",
+      "tag": "bpmn:startEvent",
+      "_id": "StartEvent_1",
+      "name": null
+    },
+    "EndEvent_16dmtu6": {
+      "class": "EndEvent",
+      "tag": "bpmn:endEvent",
+      "_id": "EndEvent_16dmtu6",
+      "name": null
+    },
+    "ParallelGateway_0vffee4": {
+      "class": "ParallelGateway",
+      "tag": "bpmn:parallelGateway",
+      "_id": "ParallelGateway_0vffee4",
+      "name": null,
+      "incoming": 2,
+      "outgoing": 1
+    },
+    "ParallelGateway_05lp38c": {
+      "class": "ParallelGateway",
+      "tag": "bpmn:parallelGateway",
+      "_id": "ParallelGateway_05lp38c",
+      "name": null,
+      "incoming": 1,
+      "outgoing": 2
+    },
+    "ExclusiveGateway_0ms7zfc": {
+      "class": "ExclusiveGateway",
+      "tag": "bpmn:exclusiveGateway",
+      "_id": "ExclusiveGateway_0ms7zfc",
+      "name": null,
+      "default": null,
+      "incoming": 2,
+      "outgoing": 1
+    },
+    "ExclusiveGateway_111m58w": {
+      "class": "ExclusiveGateway",
+      "tag": "bpmn:exclusiveGateway",
+      "_id": "ExclusiveGateway_111m58w",
+      "name": null,
+      "default": "SequenceFlow_1k3v5iz",
+      "incoming": 1,
+      "outgoing": 2
+    }
+  },
+  "flow": {
+    "tdown2": [
+      {
+        "sequence_id": "SequenceFlow_0uy1pg3",
+        "target": "ExclusiveGateway_0ms7zfc",
+        "condition": null
+      }
+    ],
+    "StartEvent_1": [
+      {
+        "sequence_id": "SequenceFlow_0a71cf1",
+        "target": "t0",
+        "condition": null
+      }
+    ],
+    "ParallelGateway_0vffee4": [
+      {
+        "sequence_id": "SequenceFlow_1h2dv1o",
+        "target": "mt",
+        "condition": null
+      }
+    ],
+    "t0": [
+      {
+        "sequence_id": "SequenceFlow_1jdxquy",
+        "target": "ParallelGateway_05lp38c",
+        "condition": null
+      }
+    ],
+    "ParallelGateway_05lp38c": [
+      {
+        "sequence_id": "SequenceFlow_0g56lcu",
+        "target": "tup",
+        "condition": null
+      },
+      {
+        "sequence_id": "SequenceFlow_0snwxlv",
+        "target": "tdown",
+        "condition": null
+      }
+    ],
+    "tdown": [
+      {
+        "sequence_id": "SequenceFlow_1xhi1kt",
+        "target": "ParallelGateway_0vffee4",
+        "condition": null
+      }
+    ],
+    "tup": [
+      {
+        "sequence_id": "SequenceFlow_1keqevg",
+        "target": "ParallelGateway_0vffee4",
+        "condition": null
+      }
+    ],
+    "ExclusiveGateway_0ms7zfc": [
+      {
+        "sequence_id": "SequenceFlow_0yryyr8",
+        "target": "EndEvent_16dmtu6",
+        "condition": null
+      }
+    ],
+    "mt": [
+      {
+        "sequence_id": "SequenceFlow_0b203rr",
+        "target": "Task_1xs7acu",
+        "condition": null
+      }
+    ],
+    "ExclusiveGateway_111m58w": [
+      {
+        "sequence_id": "SequenceFlow_0iwa4bi",
+        "target": "tup2",
+        "condition": "option==1"
+      },
+      {
+        "sequence_id": "SequenceFlow_1k3v5iz",
+        "target": "tdown2",
+        "condition": null
+      }
+    ],
+    "tup2": [
+      {
+        "sequence_id": "SequenceFlow_01mc012",
+        "target": "ExclusiveGateway_0ms7zfc",
+        "condition": null
+      }
+    ],
+    "Task_1xs7acu": [
+      {
+        "sequence_id": "SequenceFlow_0d1prpw",
+        "target": "ExclusiveGateway_111m58w",
+        "condition": null
+      }
+    ]
+  },
+  "subprocesses": {},
+  "statistics": {
+    "total_elements": 27,
+    "elements_by_type": {
+      "SequenceFlow": 14,
+      "ManualTask": 1,
+      "UserTask": 5,
+      "ServiceTask": 1,
+      "StartEvent": 1,
+      "EndEvent": 1,
+      "ParallelGateway": 2,
+      "ExclusiveGateway": 2
+    }
+  }
+}

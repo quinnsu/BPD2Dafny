@@ -494,11 +494,5 @@ module Token {
     set tokenId | tokenId in tc.tokens && tc.tokens[tokenId].status == Active
   }
 
-  predicate ValidProcessState(process: ProcessObj)
-  {
-    // 所有活跃令牌的位置都必须在流程定义中存在
-    forall tokenId :: tokenId in GetActiveTokens(process.tokenCollection) ==>
-                        tokenId in process.tokenCollection.tokens &&
-                        process.tokenCollection.tokens[tokenId].location in process.processDefinition.nodes
-  }
+
 }
