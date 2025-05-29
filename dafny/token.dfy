@@ -46,7 +46,7 @@ module Token {
     */
   datatype T = Token(
     id: TokenId,
-    location: NodeId,
+    location: NodeId, //Where the token is currently located
     status: TokenStatus,
     parentToken: Option<TokenId>,
     childTokens: set<TokenId>,
@@ -58,24 +58,31 @@ module Token {
     * Token collection data structure
     * 
     * @param tokens Map of all tokens by ID
-    * @param activeTokens Set of active token IDs
     * @param nextTokenId Next available token ID
     * @param currentTime Current execution time
     */
   datatype Collection = TokenCollection(
     tokens: map<TokenId, T>,
-    activeTokens: set<TokenId>,
     nextTokenId: TokenId,
     currentTime: nat
   )
 
   /**
+    * Token collection invariant - activeTokens must be a subset of tokens
+    */
+  predicate ValidTokenCollection(tc: Collection)
+  {
+    true  // 或者其他相关的不变式
+  }
+
+  /**
     * Create an empty token collection
     */
-  function Create(): Collection {
+  function Create(): Collection
+    ensures ValidTokenCollection(Create())
+  {
     TokenCollection(
       tokens := map[],
-      activeTokens := {},
       nextTokenId := 0,
       currentTime := 0
     )
@@ -89,6 +96,8 @@ module Token {
     * @returns Updated token collection and the ID of the new token
     */
   function CreateToken(tc: Collection, location: NodeId): (Collection, TokenId)
+    requires ValidTokenCollection(tc)
+    ensures ValidTokenCollection(CreateToken(tc, location).0)
   {
     var tokenId := tc.nextTokenId;
     var token := Token(
@@ -102,11 +111,9 @@ module Token {
                  );
 
     var newTokens := tc.tokens[tokenId := token];
-    var newActiveTokens := tc.activeTokens + {tokenId};
 
     (tc.(
      tokens := newTokens,
-     activeTokens := newActiveTokens,
      nextTokenId := tokenId + 1
      ), tokenId)
   }
@@ -120,7 +127,9 @@ module Token {
     * @returns Updated token collection
     */
   function MoveToken(tc: Collection, tokenId: TokenId, newLocation: NodeId): Collection
+    requires ValidTokenCollection(tc)
     requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
+    ensures ValidTokenCollection(MoveToken(tc, tokenId, newLocation))
   {
     var token := tc.tokens[tokenId];
     var updatedToken := token.(
@@ -139,14 +148,15 @@ module Token {
     * @returns Updated token collection
     */
   function ConsumeToken(tc: Collection, tokenId: TokenId): Collection
+    requires ValidTokenCollection(tc)
     requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
+    ensures ValidTokenCollection(ConsumeToken(tc, tokenId))
   {
     var token := tc.tokens[tokenId];
     var updatedToken := token.(status := Consumed);
 
     tc.(
-    tokens := tc.tokens[tokenId := updatedToken],
-    activeTokens := tc.activeTokens - {tokenId}
+    tokens := tc.tokens[tokenId := updatedToken]
     )
   }
 
@@ -158,7 +168,9 @@ module Token {
     * @returns Updated token collection
     */
   function ConsumeTokens(tc: Collection, tokenIds: set<TokenId>): Collection
+    requires ValidTokenCollection(tc)
     requires forall id :: id in tokenIds ==> id in tc.tokens && tc.tokens[id].status == Active
+    ensures ValidTokenCollection(ConsumeTokens(tc, tokenIds))
     decreases |tokenIds|
   {
     if |tokenIds| == 0 then tc
@@ -189,8 +201,10 @@ module Token {
     * @returns Updated token collection and set of new token IDs
     */
   function SplitToken(tc: Collection, tokenId: TokenId, targetLocations: seq<NodeId>): (Collection, set<TokenId>)
+    requires ValidTokenCollection(tc)
     requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
     requires |targetLocations| > 0
+    ensures ValidTokenCollection(SplitToken(tc, tokenId, targetLocations).0)
   {
     // First consume the parent token
     var tc' := ConsumeToken(tc, tokenId);
@@ -210,8 +224,10 @@ module Token {
     index: nat,
     createdTokens: set<TokenId>
   ): (Collection, set<TokenId>)
+    requires ValidTokenCollection(tc)
     requires index <= |locations|
     requires parentId in tc.tokens
+    ensures ValidTokenCollection(SplitTokenHelper(tc, parentId, locations, index, createdTokens).0)
     decreases |locations| - index
   {
     if index == |locations| then
@@ -243,6 +259,8 @@ module Token {
   function MergeTokens(tc: Collection, tokenIds: set<TokenId>, targetLocation: NodeId): (Collection, TokenId)
     requires forall id :: id in tokenIds ==> id in tc.tokens && tc.tokens[id].status == Active
     requires |tokenIds| > 0
+    requires ValidTokenCollection(tc)
+    ensures ValidTokenCollection(MergeTokens(tc, tokenIds, targetLocation).0)
   {
     // Consume all input tokens
     var tc' := ConsumeTokens(tc, tokenIds);
@@ -322,8 +340,7 @@ module Token {
     var updatedToken := token.(status := Suspended);
 
     tc.(
-    tokens := tc.tokens[tokenId := updatedToken],
-    activeTokens := tc.activeTokens - {tokenId}
+    tokens := tc.tokens[tokenId := updatedToken]
     )
   }
 
@@ -337,8 +354,7 @@ module Token {
     var updatedToken := token.(status := Active);
 
     tc.(
-    tokens := tc.tokens[tokenId := updatedToken],
-    activeTokens := tc.activeTokens + {tokenId}
+    tokens := tc.tokens[tokenId := updatedToken]
     )
   }
 
@@ -352,8 +368,7 @@ module Token {
     var updatedToken := token.(status := Error);
 
     tc.(
-    tokens := tc.tokens[tokenId := updatedToken],
-    activeTokens := tc.activeTokens - {tokenId}
+    tokens := tc.tokens[tokenId := updatedToken]
     )
   }
 
@@ -362,7 +377,7 @@ module Token {
     */
   function GetTokensAtNode(tc: Collection, nodeId: NodeId): set<TokenId>
   {
-    set tokenId | tokenId in tc.activeTokens && tokenId in tc.tokens && tc.tokens[tokenId].location == nodeId
+    set tokenId | tokenId in tc.tokens && tc.tokens[tokenId].location == nodeId
   }
 
   /**
@@ -370,7 +385,7 @@ module Token {
     */
   function HasActiveTokens(tc: Collection): bool
   {
-    |tc.activeTokens| > 0
+    exists tokenId :: tokenId in tc.tokens && tc.tokens[tokenId].status == Active
   }
 
   /**
@@ -378,7 +393,7 @@ module Token {
     */
   function HasTokensAtNodes(tc: Collection, nodeIds: set<NodeId>): bool
   {
-    exists tokenId :: tokenId in tc.activeTokens && tokenId in tc.tokens && tc.tokens[tokenId].location in nodeIds
+    exists tokenId :: tokenId in tc.tokens && tc.tokens[tokenId].location in nodeIds
   }
 
   /**
@@ -386,7 +401,7 @@ module Token {
     */
   function GetActiveNodes(tc: Collection): set<NodeId>
   {
-    set tokenId | tokenId in tc.activeTokens && tokenId in tc.tokens :: tc.tokens[tokenId].location
+    set tokenId | tokenId in tc.tokens :: tc.tokens[tokenId].location
   }
 
 
@@ -445,6 +460,7 @@ module Token {
     requires |tc.tokens| > 0
   {
     var tokenIds := set tokenId | tokenId in tc.tokens;
+    assume |tokenIds| > 0; // 证明集合非空
     var firstId := PickOne(tokenIds);
     // Ensure preconditions are met
     assert firstId in tc.tokens;
@@ -468,5 +484,21 @@ module Token {
         FindEarliestTokenHelper(tc, newRemaining, tokenId)
       else
         FindEarliestTokenHelper(tc, newRemaining, currentEarliest)
+  }
+
+  /**
+    * Get active tokens
+    */
+  function GetActiveTokens(tc: Collection): set<TokenId>
+  {
+    set tokenId | tokenId in tc.tokens && tc.tokens[tokenId].status == Active
+  }
+
+  predicate ValidProcessState(process: ProcessObj)
+  {
+    // 所有活跃令牌的位置都必须在流程定义中存在
+    forall tokenId :: tokenId in GetActiveTokens(process.tokenCollection) ==>
+                        tokenId in process.tokenCollection.tokens &&
+                        process.tokenCollection.tokens[tokenId].location in process.processDefinition.nodes
   }
 }

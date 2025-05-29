@@ -7,5 +7,3 @@ datatype Node =
 
 }
 
-//Empty只会在特殊情况下用到，如只有一个任务
-//ConditionNode还没有写具体的实现
