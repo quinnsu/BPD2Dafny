@@ -98,6 +98,11 @@ module Token {
   function CreateToken(tc: Collection, location: NodeId): (Collection, TokenId)
     requires ValidTokenCollection(tc)
     ensures ValidTokenCollection(CreateToken(tc, location).0)
+    ensures var (newTc, tokenId) := CreateToken(tc, location);
+            tokenId in newTc.tokens &&
+            newTc.tokens[tokenId].status == Active &&
+            newTc.tokens[tokenId].location == location &&
+            tokenId in GetActiveTokens(newTc)
   {
     var tokenId := tc.nextTokenId;
     var token := Token(
@@ -383,7 +388,7 @@ module Token {
   /**
     * Check if there are any active tokens
     */
-  function HasActiveTokens(tc: Collection): bool
+  predicate HasActiveTokens(tc: Collection)
   {
     exists tokenId :: tokenId in tc.tokens && tc.tokens[tokenId].status == Active
   }
@@ -495,4 +500,24 @@ module Token {
   }
 
 
+  /**
+    * Reactivate a suspended token  
+    */
+  function ReactivateToken(tc: Collection, tokenId: TokenId): Collection
+    requires tokenId in tc.tokens && tc.tokens[tokenId].status == Suspended
+
+  /**
+    * Set token to error state
+    */
+  function SetTokenError(tc: Collection, tokenId: TokenId, errorMsg: string): Collection
+    requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
+
+  /**
+    * Lemma: Non-empty set has positive cardinality
+    */
+  lemma NonEmptySetHasPositiveSize<T>(s: set<T>)
+    ensures (s != {}) <==> (|s| > 0)
+  {
+    // Dafny can usually prove this automatically
+  }
 }
