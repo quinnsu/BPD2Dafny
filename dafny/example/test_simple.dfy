@@ -10,6 +10,7 @@ module TestSimple {
   import opened ExecutionInit
   import opened BPMNState
   import opened ExecutionEngine
+  import opened Token
 
   /**
     * Test: Basic model validation
@@ -48,18 +49,64 @@ module TestSimple {
     assert nextState.Running?;
   }
 
-  method TestCompleteModel01Execution()
+  /**
+    * 调试辅助函数：检查特定位置是否有token
+    */
+  predicate HasTokenAt(state: State, nodeId: string)
+    requires state.Running?
+  {
+    exists tokenId :: tokenId in state.process.tokenCollection.tokens &&
+                      state.process.tokenCollection.tokens[tokenId].location == nodeId &&
+                      state.process.tokenCollection.tokens[tokenId].status == Active
+  }
+
+  /**
+    * 获取所有活跃token的位置
+    */
+  function GetAllActiveLocations(state: State): set<string>
+    requires state.Running?
+  {
+    set tokenId | tokenId in GetActiveTokens(state.process.tokenCollection) ::
+      state.process.tokenCollection.tokens[tokenId].location
+  }
+
+  /**
+    * 计算活跃token数量
+    */
+  function CountActiveTokens(state: State): nat
+    requires state.Running?
+  {
+    |GetActiveTokens(state.process.tokenCollection)|
+  }
+
+  /**
+    * 详细的测试方法，包含更多验证
+    */
+  method TestCompleteModel01ExecutionDetailed()
   {
     var processDef := CreateParsedModel01();
     var state0 := InitializeExecution(processDef);
 
+    // 验证初始状态
+    assert state0.Running?;
+
     var state1 := ExecuteStep(state0);              // StartEvent → t0
     assert state1.Running?;
-    assert IsAtNode(state1, "t0");                  // 验证在t0节点
+    assert IsAtNode(state1, "t0");
 
     var state2 := ExecuteStep(state1);              // t0 → ParallelGateway_05lp38c
     assert state2.Running?;
     assert IsAtNode(state2, "ParallelGateway_05lp38c");
+
+    var state3 := ExecuteStep(state2);              // ParallelGateway分叉
+    assert state3.Running?;
+    assert IsAtNode(state3, "tdown") && IsAtNode(state3, "tup");
+    //assert CountActiveTokens(state3) == 2;
+
+    // 详细验证state3的状态
+    print "State3 - Has token at tup: ", HasTokenAt(state3, "tup"), "\n";
+    print "State3 - Has token at tdown: ", HasTokenAt(state3, "tdown"), "\n";
+
   }
 
   /**
@@ -87,4 +134,7 @@ module TestSimple {
         case _ => initialState
       }
   } */
+
+
+
 } 

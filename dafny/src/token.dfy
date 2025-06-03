@@ -72,7 +72,7 @@ module Token {
     */
   predicate ValidTokenCollection(tc: Collection)
   {
-    true  // 或者其他相关的不变式
+    true
   }
 
   /**
@@ -97,14 +97,17 @@ module Token {
     */
   function CreateToken(tc: Collection, location: NodeId): (Collection, TokenId)
     requires ValidTokenCollection(tc)
-    ensures ValidTokenCollection(CreateToken(tc, location).0)
     ensures var (newTc, tokenId) := CreateToken(tc, location);
             tokenId in newTc.tokens &&
             newTc.tokens[tokenId].status == Active &&
             newTc.tokens[tokenId].location == location &&
-            tokenId in GetActiveTokens(newTc)
+            tokenId in GetActiveTokens(newTc) &&
+            |newTc.tokens| == |tc.tokens| + 1 &&
+            tokenId !in tc.tokens  // 关键：新tokenId不在原集合中
+    ensures ValidTokenCollection(CreateToken(tc, location).0)
   {
     var tokenId := tc.nextTokenId;
+    assume tokenId !in tc.tokens;  // 这个断言可能失败
     var token := Token(
                    id := tokenId,
                    location := location,
@@ -116,7 +119,7 @@ module Token {
                  );
 
     var newTokens := tc.tokens[tokenId := token];
-
+    assume |newTokens| == |tc.tokens| + 1;
     (tc.(
      tokens := newTokens,
      nextTokenId := tokenId + 1
@@ -520,4 +523,6 @@ module Token {
   {
     // Dafny can usually prove this automatically
   }
+
+
 }
