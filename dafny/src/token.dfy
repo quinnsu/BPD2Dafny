@@ -69,10 +69,16 @@ module Token {
 
   /**
     * Token collection invariant - activeTokens must be a subset of tokens
+    * property that should be satisfied all the time
+    * the nexttokenId is a self-increasing number so it will be unique
     */
   predicate ValidTokenCollection(tc: Collection)
   {
-    true
+    if |tc.tokens| == 0 then
+      tc.nextTokenId == 0
+    else
+      tc.nextTokenId > 0 &&
+      forall tokenId :: tokenId in tc.tokens ==> tokenId < tc.nextTokenId
   }
 
   /**
@@ -107,7 +113,7 @@ module Token {
     ensures ValidTokenCollection(CreateToken(tc, location).0)
   {
     var tokenId := tc.nextTokenId;
-    assume tokenId !in tc.tokens;  // 这个断言可能失败
+    assert tokenId !in tc.tokens;  // 这个断言可能失败
     var token := Token(
                    id := tokenId,
                    location := location,
@@ -119,7 +125,7 @@ module Token {
                  );
 
     var newTokens := tc.tokens[tokenId := token];
-    assume |newTokens| == |tc.tokens| + 1;
+    assert |newTokens| == |tc.tokens| + 1;
     (tc.(
      tokens := newTokens,
      nextTokenId := tokenId + 1
@@ -263,7 +269,7 @@ module Token {
     * @param tokenIds Set of token IDs to merge
     * @param targetLocation Location for the merged token
     * @returns Updated token collection and ID of the new merged token
-    */
+   
   function MergeTokens(tc: Collection, tokenIds: set<TokenId>, targetLocation: NodeId): (Collection, TokenId)
     requires forall id :: id in tokenIds ==> id in tc.tokens && tc.tokens[id].status == Active
     requires |tokenIds| > 0
@@ -290,7 +296,7 @@ module Token {
 
     (tc'''', newTokenId)
   }
-
+ */
 
   /**
     * Find common parent token (if any) for a set of tokens

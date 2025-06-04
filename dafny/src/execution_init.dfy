@@ -21,6 +21,7 @@ module ExecutionInit {
     requires CanStartProcess(processDef)
     requires |processDef.startNodes| == 1
     ensures InitializeExecution(processDef).Running?
+    ensures ValidTokenCollection(InitializeExecution(processDef).process.tokenCollection)
   {
     var emptyTokens := Token.Create();
     var startNodeId := PickOneString(processDef.startNodes);
@@ -47,6 +48,7 @@ module ExecutionInit {
 
   function ProcessStartEvent(state: ExecutingState): State
     requires CanExecuteStartEvent(state)
+    requires ValidTokenCollection(state.process.tokenCollection)
     ensures ProcessStartEvent(state).Running?
   {
     var process := state.process;
