@@ -27,11 +27,11 @@ module ExecutionInit {
     var startNodeId := PickOneString(processDef.startNodes);
     var (tokensWithStart, startTokenId) := Token.CreateToken(emptyTokens, startNodeId);
 
-    // 计算初始context
-    var initialContext := ExecutionContext.ComputeContext(
-                            tokensWithStart,
-                            startNodeId,
-                            ExecutionContext.CreateInitialContext()
+    // 获取初始active tokens并初始化执行队列
+    var initialActiveTokens := Token.GetActiveTokens(tokensWithStart);
+    var initialContext := ExecutionContext.InitializeExecutionQueue(
+                            ExecutionContext.CreateInitialContext(),
+                            initialActiveTokens
                           );
 
     var process := Process(
@@ -61,11 +61,11 @@ module ExecutionInit {
     var nextNodeId := process.processDefinition.flows[flowId].targetRef;
     var (tokensWithNext, nextTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
 
-    // 更新context
-    var updatedContext := ExecutionContext.ComputeContext(
-                            tokensWithNext,
-                            nextNodeId,
-                            process.context
+    // 获取新的active tokens并更新执行队列
+    var newActiveTokens := Token.GetActiveTokens(tokensWithNext);
+    var updatedContext := ExecutionContext.InitializeExecutionQueue(
+                            ExecutionContext.UpdateContext(process.context, nextNodeId),
+                            newActiveTokens
                           );
 
     Running(Process(

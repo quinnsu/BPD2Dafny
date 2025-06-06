@@ -96,8 +96,7 @@ module BPMNState {
         Token.ValidTokenCollection(process.tokenCollection) &&
         ValidProcessState(process)
       case Error(process, _) =>
-        Token.ValidTokenCollection(process.tokenCollection) &&
-        ValidProcessState(process)
+        true
     }
   }
 
@@ -219,7 +218,7 @@ module BPMNState {
   function GetCurrentLocations(state: State): set<string>
     requires state.Running?
   {
-    state.process.context.currentNodes
+    ExecutionContext.GetCurrentNodes(state.process.tokenCollection, state.process.context)
   }
 
   /**
@@ -243,7 +242,8 @@ module BPMNState {
   predicate IsAtNode(state: State, nodeId: string)
     requires state.Running?
   {
-    nodeId in state.process.context.currentNodes
+    var currentNodes := ExecutionContext.GetCurrentNodes(state.process.tokenCollection, state.process.context);
+    nodeId in currentNodes
   }
 
   /**

@@ -27,7 +27,8 @@ module Token {
     * Token status enum
     */
   datatype TokenStatus =
-    | Active    // Token is currently active in the process
+    | Active    // Token is currently active and can be executed immediately
+    | Waiting   // Token is waiting (e.g., for parallel join completion)
     | Consumed  // Token has been consumed (e.g., by a gateway or end event)
     | Suspended // Token is temporarily suspended (e.g., waiting for a message)
     | Error     // Token encountered an error
@@ -530,5 +531,34 @@ module Token {
     // Dafny can usually prove this automatically
   }
 
+  /**
+    * Set token to waiting state (e.g., for parallel join)
+    */
+  function SetTokenWaiting(tc: Collection, tokenId: TokenId): Collection
+    requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
+  {
+    var token := tc.tokens[tokenId];
+    var updatedToken := token.(status := Waiting);
+    tc.(tokens := tc.tokens[tokenId := updatedToken])
+  }
+
+  /**
+    * Set token back to active state from waiting
+    */
+  function SetTokenActive(tc: Collection, tokenId: TokenId): Collection
+    requires tokenId in tc.tokens && tc.tokens[tokenId].status == Waiting
+  {
+    var token := tc.tokens[tokenId];
+    var updatedToken := token.(status := Active);
+    tc.(tokens := tc.tokens[tokenId := updatedToken])
+  }
+
+  /**
+    * Get all waiting tokens
+    */
+  function GetWaitingTokens(tc: Collection): set<TokenId>
+  {
+    set tokenId | tokenId in tc.tokens && tc.tokens[tokenId].status == Waiting
+  }
 
 }

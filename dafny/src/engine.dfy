@@ -7,22 +7,113 @@ include "./state.dfy"
 include "./process.dfy"
 include "./utils/variables.dfy"
 include "./execution_init.dfy"
+include "./utils/option.dfy"
+include "./Context.dfy"
 module ExecutionEngine {
   import opened Token
   import opened BPMNState
   import opened ProcessDefinition
   import opened Variables
   import opened ExecutionInit
+  import opened Optional
+  import opened ExecutionContext
 
   /**
-    * The main execution function
+    * The main execution function with a scheduler
     */
   function ExecuteStep(state: ExecutingState): State
     requires ValidState(state)
   {
+    // if the queue is empty, return the completed state
+    if |state.process.context.executionQueue| == 0 then
+      state
+    else
+       var (newContext, tokenId) := DequeueToken(state.process.context);
+       if tokenId in state.process.tokenCollection.tokens &&
+          state.process.tokenCollection.tokens[tokenId].status == Active then
+         ExecuteTokenStep(state, tokenId)
+       else
+         BPMNState.Error(state.process, ValidationError("Token is not active"))
+  }
+
+  /**
+  A scheduler that choose token to execute
+   */
+  method Execute(state: ExecutingState)
+    requires ValidState(state)
+    decreases *
+  {
+    while |state.process.context.executionQueue| > 0
+      decreases *
+    {
+      // pick a token to execute
+      var process := state.process;
+
+      var (newContext, tokenId) := DequeueToken(state.process.context);
+
+      assume tokenId in process.tokenCollection.tokens;
+      assume process.tokenCollection.tokens[tokenId].status == Active;
+      var token := process.tokenCollection.tokens[tokenId];
+      var currentNode := process.processDefinition.nodes[token.location];
+      var newState :=
+        match currentNode.nodeType {
+          case StartEvent =>
+            if CanExecuteStartEvent(state) then
+              ExecuteStartEvent(state)
+            else
+              state
+          case EndEvent => ExecuteEndEvent(state, tokenId)
+          case Task(taskType) => ExecuteTask(state, tokenId, taskType)
+          case Gateway(gatewayType) => ExecuteGateway(state, tokenId, gatewayType)
+          case IntermediateEvent(eventType) => ExecuteIntermediateEvent(state, tokenId, eventType)
+        };
+    }}
+
+
+
+
+  /**
+    * check if the token can be executed immediately (no waiting)
+    */
+  predicate CanExecuteTokenImmediately(state: ExecutingState, tokenId: Token.TokenId)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+  {
     var process := state.process;
-    var activeTokens := GetActiveTokens(process.tokenCollection);
-    var tokenId := Token.PickOne(activeTokens);
+    var token := process.tokenCollection.tokens[tokenId];
+    var location := token.location;
+
+    if location in process.processDefinition.nodes then
+      var node := process.processDefinition.nodes[location];
+      match node.nodeType {
+        case Gateway(ParallelGateway) =>
+          if |node.incoming| > 1 then
+            // 这是join操作，检查是否所有分支都已到达
+            var tokensAtLocation := GetActiveTokensAtLocation(process.tokenCollection, location);
+            |tokensAtLocation| == |node.incoming|
+          else
+            // 这是fork操作或简单通过，可以立即执行
+            true
+        case Gateway(_) =>
+          // 其他类型网关的处理逻辑
+          true
+        case _ =>
+          // Task, StartEvent, EndEvent等通常可以立即执行
+          true
+      }
+    else
+      false
+  }
+
+  /**
+    * 执行单个token的步骤
+    */
+  function ExecuteTokenStep(state: ExecutingState, tokenId: Token.TokenId): State
+    requires ValidState(state)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+  {
+    var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
     var currentNode := process.processDefinition.nodes[token.location];
 
@@ -39,10 +130,10 @@ module ExecutionEngine {
     }
   }
 
-
   // execute the step of a start event
-  function {:verify false} ExecuteStartEvent(state: State): State
+  function ExecuteStartEvent(state: State): State
     requires CanExecuteStartEvent(state)
+    requires ValidTokenCollection(state.process.tokenCollection)
     ensures ExecuteStartEvent(state).Running?
   {
     ExecutionInit.ProcessStartEvent(state)
@@ -53,6 +144,7 @@ module ExecutionEngine {
   function ExecuteTask(state: ExecutingState, tokenId: Token.TokenId, taskType: TaskType): State
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires tokenId in state.process.tokenCollection.tokens
+    requires ValidTokenCollection(state.process.tokenCollection)
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
   {
     match taskType {
@@ -67,22 +159,30 @@ module ExecutionEngine {
   // execute the step of a gateway
   function ExecuteGateway(state: ExecutingState, tokenId: Token.TokenId, gatewayType: GatewayType): State
     requires CanExecuteGateway(state, tokenId)
+    requires ValidTokenCollection(state.process.tokenCollection)
   {
     var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
     var currentNode := process.processDefinition.nodes[token.location];
     var outgoingFlows := currentNode.outgoing;
     var incomingFlows := currentNode.incoming;
-
-    if |outgoingFlows| > 1 then
-      if CanExecuteParallelFork(state, tokenId, outgoingFlows) then
-        ExecuteParallelFork(state, tokenId, outgoingFlows)
-      else
-        BPMNState.Error(process, ValidationError("Cannot execute parallel fork"))
-    else if |incomingFlows| > 1 then
-      state
-    else
-      ExecuteSimplePassThrough(state, tokenId)
+    match gatewayType {
+      case ParallelGateway =>
+        if |outgoingFlows| > 1 then
+          if CanExecuteParallelFork(state, tokenId, outgoingFlows) then
+            ExecuteParallelFork(state, tokenId, outgoingFlows)
+          else
+            BPMNState.Error(process, ValidationError("Cannot execute parallel fork"))
+        else if |incomingFlows| > 1 then
+          if CanExecuteParallelJoin(state, tokenId) then
+            ExecuteParallelJoin(state, tokenId)
+          else
+            BPMNState.Error(process, ValidationError("Cannot execute parallel join"))
+        else
+          ExecuteSimplePassThrough(state, tokenId)
+      case _ =>
+        state 
+    }
   }
   // execute the step of a intermediate event
   function ExecuteIntermediateEvent(state: State, tokenId: Token.TokenId, eventType: ProcessDefinition.EventType): State { state }
@@ -90,10 +190,12 @@ module ExecutionEngine {
   /**
     * Execute a user task - for testing, we simulate user input
     */
-  function {:verify false} ExecuteUserTask(state: ExecutingState, tokenId: Token.TokenId): State
+  function ExecuteUserTask(state: ExecutingState, tokenId: Token.TokenId): State
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires tokenId in state.process.tokenCollection.tokens
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
   {
     var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
@@ -149,10 +251,12 @@ module ExecutionEngine {
   /**
     * Execute a service task - automatic execution
     */
-  function {:verify false} ExecuteServiceTask(state: ExecutingState, tokenId: Token.TokenId): State
+  function ExecuteServiceTask(state: ExecutingState, tokenId: Token.TokenId): State
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires tokenId in state.process.tokenCollection.tokens
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
   {
     ExecuteSimpleTask(state, tokenId, "ServiceTask")
   }
@@ -160,10 +264,12 @@ module ExecutionEngine {
   /**
     * Execute a manual task - requires human intervention
     */
-  function {:verify false} ExecuteManualTask(state: ExecutingState, tokenId: Token.TokenId): State
+  function ExecuteManualTask(state: ExecutingState, tokenId: Token.TokenId): State
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires tokenId in state.process.tokenCollection.tokens
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
   {
     ExecuteSimpleTask(state, tokenId, "ManualTask")
   }
@@ -171,10 +277,12 @@ module ExecutionEngine {
   /**
     * Common task execution logic
     */
-  function {:verify false} ExecuteSimpleTask(state: ExecutingState, tokenId: Token.TokenId, taskType: string): State
+  function ExecuteSimpleTask(state: ExecutingState, tokenId: Token.TokenId, taskType: string): State
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires tokenId in state.process.tokenCollection.tokens
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
   {
     var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
@@ -232,6 +340,7 @@ module ExecutionEngine {
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires tokenId in state.process.tokenCollection.tokens
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires ValidTokenCollection(state.process.tokenCollection)
   {
     var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
@@ -246,7 +355,10 @@ module ExecutionEngine {
       else
         BPMNState.Error(process, ValidationError("Some outgoing flows not found in process definition"))
     else if |incomingFlows| > 1 then
-      state
+      if CanExecuteParallelJoin(state, tokenId) then
+        ExecuteParallelJoin(state, tokenId)
+      else
+        BPMNState.Error(process, ValidationError("Cannot execute parallel join"))
     else
       ExecuteSimplePassThrough(state, tokenId)
   }
@@ -259,6 +371,7 @@ module ExecutionEngine {
     tokenId: Token.TokenId,
     outgoingFlows: set<string>
   ): State
+    requires ValidTokenCollection(state.process.tokenCollection)
     requires CanExecuteParallelFork(state, tokenId, outgoingFlows)
     ensures ExecuteParallelFork(state, tokenId, outgoingFlows).Running?
     ensures var result := ExecuteParallelFork(state, tokenId, outgoingFlows);
@@ -292,7 +405,7 @@ module ExecutionEngine {
                                                 finalTokens.tokens[tokenId].location == nodeId &&
                                                 finalTokens.tokens[tokenId].status == Active;
 
-    // 更新执行历史...
+    // 更新执行历史..
     var exitEvent := Event(0, token.location, NodeExited, tokenId, Variables.EmptyVariables());
     var enterEvents := CreateEnterEvents(newTokenIds, outgoingFlows, process.processDefinition.flows);
     var newHistory := process.executionHistory + [exitEvent] + enterEvents;
@@ -304,14 +417,22 @@ module ExecutionEngine {
                             process.context
                           );
 
-    Running(Process(
-              processId := process.processId,
-              tokenCollection := finalTokens,
-              globalVariables := process.globalVariables,
-              processDefinition := process.processDefinition,
-              executionHistory := newHistory,
-              context := updatedContext
-            ))
+    var result := Running(Process(
+                    processId := process.processId,
+                    tokenCollection := finalTokens,
+                    globalVariables := process.globalVariables,
+                    processDefinition := process.processDefinition,
+                    executionHistory := newHistory,
+                    context := updatedContext
+                  ));
+
+    // 断言：验证每个目标节点都有token
+    assert forall flowId :: flowId in outgoingFlows ==> 
+      var targetNode := process.processDefinition.flows[flowId].targetRef;
+      exists tokenId :: tokenId in GetActiveTokens(result.process.tokenCollection) &&
+                        result.process.tokenCollection.tokens[tokenId].location == targetNode;
+
+    result
   }
 
 
@@ -363,8 +484,8 @@ module ExecutionEngine {
 
       var (finalTokens, remainingTokenIds) := CreateTokensForFlows(tokensWithNew, remainingFlows, flowDefinitions);
 
-      assert |remainingTokenIds| == |remainingFlows|;  // 来自递归调用的后置条件
-      assert newTokenId !in remainingTokenIds;         // 需要证明或假设
+      assert |remainingTokenIds| == |remainingFlows|;
+      assert newTokenId !in remainingTokenIds;
 
       (finalTokens, remainingTokenIds + {newTokenId})
   }
@@ -382,6 +503,8 @@ module ExecutionEngine {
     */
   function ConsumeMultipleTokens(tokens: Token.Collection, tokensToConsume: set<Token.TokenId>): Token.Collection
     requires forall id :: id in tokensToConsume ==> id in tokens.tokens && tokens.tokens[id].status == Active
+    requires ValidTokenCollection(tokens)
+    ensures ValidTokenCollection(ConsumeMultipleTokens(tokens, tokensToConsume))
     decreases |tokensToConsume|
   {
     if |tokensToConsume| == 0 then
@@ -402,13 +525,14 @@ module ExecutionEngine {
   function ExecuteSimplePassThrough(state: ExecutingState, tokenId: Token.TokenId): State
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires tokenId in state.process.tokenCollection.tokens
+    requires ValidTokenCollection(state.process.tokenCollection)
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
   {
     ExecuteSimpleTask(state, tokenId, "Gateway")
   }
 
   /**
-    * 创建进入事件列表
+    * 创建进入事件列
     */
   function CreateEnterEvents(
     tokenIds: set<Token.TokenId>,
@@ -449,4 +573,85 @@ module ExecutionEngine {
   {
     |GetActiveTokens(state.process.tokenCollection)|
   }
-} 
+
+  /**
+    * 获取指定位置的所有active tokens
+    */
+  function GetActiveTokensAtLocation(tokens: Token.Collection, location: string): set<Token.TokenId>
+  {
+    set tokenId | tokenId in tokens.tokens &&
+                  tokens.tokens[tokenId].location == location &&
+                  tokens.tokens[tokenId].status == Active
+  }
+
+  /**
+    * Execute a parallel join - consume all arriving tokens and create one new token
+    */
+  function ExecuteParallelJoin(state: ExecutingState, tokenId: Token.TokenId): State
+    requires tokenId in GetActiveTokens(state.process.tokenCollection)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires ValidTokenCollection(state.process.tokenCollection)
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires CanExecuteParallelJoin(state, tokenId)
+  {
+    var process := state.process;
+    var token := process.tokenCollection.tokens[tokenId];
+    var currentNode := process.processDefinition.nodes[token.location];
+    var location := token.location;
+
+    // 获取该位置的所有active tokens（所有分支的tokens）
+    var tokensAtLocation := GetActiveTokensAtLocation(process.tokenCollection, location);
+
+    // 消费所有到达的tokens
+    var tokensAfterConsume := ConsumeMultipleTokens(process.tokenCollection, tokensAtLocation);
+
+    // 创建新token在下游（parallel join应该只有一个输出）
+    if |currentNode.outgoing| == 1 then
+      var outgoingFlow := Token.PickOne(currentNode.outgoing);
+      if outgoingFlow in process.processDefinition.flows then
+        var nextNodeId := process.processDefinition.flows[outgoingFlow].targetRef;
+        var (finalTokens, newTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
+
+        // 更新执行历史
+        var newHistory := process.executionHistory + [
+                            Event(0, location, NodeExited, tokenId, Variables.EmptyVariables()),
+                            Event(1, nextNodeId, NodeEntered, newTokenId, Variables.EmptyVariables())
+                          ];
+
+        // 更新context
+        var updatedContext := ExecutionContext.ComputeContext(
+                                finalTokens,
+                                location,
+                                process.context
+                              );
+
+        Running(Process(
+                  processId := process.processId,
+                  tokenCollection := finalTokens,
+                  globalVariables := process.globalVariables,
+                  processDefinition := process.processDefinition,
+                  executionHistory := newHistory,
+                  context := updatedContext
+                ))
+      else
+        BPMNState.Error(process, ValidationError("Outgoing flow not found"))
+    else
+      BPMNState.Error(process, ValidationError("Parallel join should have exactly one outgoing flow"))
+  }
+
+  /** Only when all tokens arrive the parallel gateway, can the parallel be executed */
+  predicate CanExecuteParallelJoin(state: ExecutingState, tokenId: Token.TokenId)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+  {
+    var process := state.process;
+    var token := process.tokenCollection.tokens[tokenId];
+    var node := process.processDefinition.nodes[token.location];
+
+    tokenId in GetActiveTokens(state.process.tokenCollection) &&
+    tokenId in state.process.tokenCollection.tokens &&
+    state.process.tokenCollection.tokens[tokenId].status == Active &&
+    state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes &&
+    |GetActiveTokensAtLocation(process.tokenCollection, token.location)| == |node.incoming|
+  }
+}
