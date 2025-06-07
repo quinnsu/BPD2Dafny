@@ -40,11 +40,13 @@ module ExecutionEngine {
   A scheduler that choose token to execute
    */
   method Execute(state: ExecutingState)
+    
     requires ValidState(state)
     decreases *
   {
     while |state.process.context.executionQueue| > 0
       decreases *
+      invariant ValidState(state)
     {
       // pick a token to execute
       var process := state.process;
@@ -505,6 +507,22 @@ module ExecutionEngine {
     requires forall id :: id in tokensToConsume ==> id in tokens.tokens && tokens.tokens[id].status == Active
     requires ValidTokenCollection(tokens)
     ensures ValidTokenCollection(ConsumeMultipleTokens(tokens, tokensToConsume))
+    ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
+            // 不变式1：被消费的tokens状态变为Consumed
+            forall id :: id in tokensToConsume ==> 
+              id in result.tokens && result.tokens[id].status == Consumed
+    ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
+            // 不变式2：未被消费的tokens保持原状态
+            forall id :: id in tokens.tokens && id !in tokensToConsume ==> 
+              id in result.tokens && result.tokens[id] == tokens.tokens[id]
+    ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
+            // 不变式3：token集合大小不变（consume不删除，只改状态）
+            |result.tokens| == |tokens.tokens|
+    ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
+            // 不变式4：关键性质 - 消费掉某位置所有active tokens后，该位置无active tokens
+            forall location :: 
+              (forall id :: id in GetActiveTokensAtLocation(tokens, location) ==> id in tokensToConsume) ==>
+              GetActiveTokensAtLocation(result, location) == {}
     decreases |tokensToConsume|
   {
     if |tokensToConsume| == 0 then
@@ -512,10 +530,22 @@ module ExecutionEngine {
     else
       var tokenId := Token.PickOne(tokensToConsume);
       var remainingTokens := tokensToConsume - {tokenId};
+      
+      // 关键断言：验证ConsumeToken的前置条件
+      assert tokenId in tokens.tokens && tokens.tokens[tokenId].status == Active;
+      
       var tokensAfterOne := Token.ConsumeToken(tokens, tokenId);
-      assert forall id :: id in remainingTokens ==>
-                            id in tokensAfterOne.tokens && tokensAfterOne.tokens[id].status == Active;
-
+      
+      // 递归不变式辅助断言
+      assert tokenId !in remainingTokens;
+      assert forall id :: id in remainingTokens ==> 
+               id in tokensAfterOne.tokens && tokensAfterOne.tokens[id].status == Active;
+      
+      // 证明单个消费后的性质
+      assert tokensAfterOne.tokens[tokenId].status == Consumed;
+      assert forall id :: id in tokens.tokens && id != tokenId ==> 
+               tokensAfterOne.tokens[id] == tokens.tokens[id];
+      
       ConsumeMultipleTokens(tokensAfterOne, remainingTokens)
   }
 
@@ -605,11 +635,19 @@ module ExecutionEngine {
     // 消费所有到达的tokens
     var tokensAfterConsume := ConsumeMultipleTokens(process.tokenCollection, tokensAtLocation);
 
+    // 利用ConsumeMultipleTokens的不变式4：消费后该位置无active tokens
+    assert GetActiveTokensAtLocation(tokensAfterConsume, location) == {};
+
     // 创建新token在下游（parallel join应该只有一个输出）
     if |currentNode.outgoing| == 1 then
       var outgoingFlow := Token.PickOne(currentNode.outgoing);
       if outgoingFlow in process.processDefinition.flows then
         var nextNodeId := process.processDefinition.flows[outgoingFlow].targetRef;
+        
+        // 关键断言：parallel join的输出不应指向自己（BPMN语义要求）
+        // 这确保CreateToken不会在原位置创建新token
+        assume nextNodeId != location;
+        
         var (finalTokens, newTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
 
         // 更新执行历史
@@ -625,14 +663,25 @@ module ExecutionEngine {
                                 process.context
                               );
 
-        Running(Process(
-                  processId := process.processId,
-                  tokenCollection := finalTokens,
-                  globalVariables := process.globalVariables,
-                  processDefinition := process.processDefinition,
-                  executionHistory := newHistory,
-                  context := updatedContext
-                ))
+        var result := Running(Process(
+                        processId := process.processId,
+                        tokenCollection := finalTokens,
+                        globalVariables := process.globalVariables,
+                        processDefinition := process.processDefinition,
+                        executionHistory := newHistory,
+                        context := updatedContext
+                      ));
+
+        // 断言：执行后验证 - 新token在正确位置
+        assert newTokenId in GetActiveTokens(result.process.tokenCollection);
+        assert result.process.tokenCollection.tokens[newTokenId].location == nextNodeId;
+        assert result.process.tokenCollection.tokens[newTokenId].status == Active;
+        
+        // 断言：原join节点不再有active tokens（基于ConsumeMultipleTokens不变式）
+        // CreateToken不会在原位置创建token，所以原位置保持清
+        assert GetActiveTokensAtLocation(result.process.tokenCollection, location) == {};
+
+        result
       else
         BPMNState.Error(process, ValidationError("Outgoing flow not found"))
     else

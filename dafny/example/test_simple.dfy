@@ -82,29 +82,33 @@ module TestSimple {
   /**
     * 详细的测试方法，包含更多验证
     */
-  method{:timeLimit 60} TestCompleteModel01ExecutionDetailed()
+  method{:timeLimit 60} TestCompleteModel01ExecutionStep()
+
   {
     var processDef := CreateParsedModel01();
     var state0 := InitializeExecution(processDef);
 
     // 验证初始状
     assert state0.Running?;
-
-    var state1 := ExecuteStep(state0);              // StartEvent → t0
+    //use ExecuteStep to display one step
+    var state1 := ExecuteStep(state0);
     assert state1.Running?;
     assert IsAtNode(state1, "t0");
-
     var state2 := ExecuteStep(state1);              // t0 → ParallelGateway_05lp38c
     assert state2.Running?;
     assert IsAtNode(state2, "ParallelGateway_05lp38c");
-
     var state3 := ExecuteStep(state2);              // ParallelGateway -> tdown, tup
     assert state3.Running?;
     assert IsAtNode(state3, "tdown") && IsAtNode(state3, "tup");
-    //assert CountActiveTokens(state3) == 2;
-    //parallerlGateway join
 
-  
+  }
+
+  method TestModel01Execution()
+    decreases *
+  {
+    var processDef := CreateParsedModel01();
+    var state0 := InitializeExecution(processDef);
+    Execute(state0);              // StartEvent → t0
   }
 
   /**
