@@ -22,16 +22,25 @@ module ExecutionInit {
     requires |processDef.startNodes| == 1
     ensures InitializeExecution(processDef).Running?
     ensures ValidTokenCollection(InitializeExecution(processDef).process.tokenCollection)
+    ensures ValidState(InitializeExecution(processDef))
   {
     var emptyTokens := Token.Create();
+    assert |Token.GetActiveTokens(emptyTokens)| == 0;
     var startNodeId := PickOneString(processDef.startNodes);
     var (tokensWithStart, startTokenId) := Token.CreateToken(emptyTokens, startNodeId);
-
-    // 获取初始active tokens并初始化执行队列
-    var initialActiveTokens := Token.GetActiveTokens(tokensWithStart);
-    var initialContext := ExecutionContext.InitializeExecutionQueue(
-                            ExecutionContext.CreateInitialContext(),
-                            initialActiveTokens
+    assert |Token.GetActiveTokens(tokensWithStart)| == 1;
+    // CreateToken ensures ValidTokenCollection
+    assert ValidTokenCollection(tokensWithStart);
+    // startNodeId is in nodes (from CanStartProcess)
+    assert startNodeId in processDef.nodes;
+    // token location is in nodes  
+    assert tokensWithStart.tokens[startTokenId].location == startNodeId;
+    assert tokensWithStart.tokens[startTokenId].location in processDef.nodes;
+    
+    var initialContext := ExecutionContext.CreateConsistentContext(
+                            tokensWithStart,
+                            startNodeId,
+                            0
                           );
 
     var process := Process(
@@ -40,8 +49,14 @@ module ExecutionInit {
                      globalVariables := Variables.EmptyVariables(),
                      processDefinition := processDef,
                      executionHistory := [],
-                     context := initialContext
+                     context := initialContext,
+                     executionQueue := [startTokenId]
                    );
+
+    // Debug: verify we have exactly one active token
+    var activeTokens := Token.GetActiveTokens(tokensWithStart);
+    assert startTokenId in activeTokens;
+
 
     Running(process)
   }
@@ -49,7 +64,9 @@ module ExecutionInit {
   function ProcessStartEvent(state: ExecutingState): State
     requires CanExecuteStartEvent(state)
     requires ValidTokenCollection(state.process.tokenCollection)
+    requires ValidProcessDefinition(state.process.processDefinition)
     ensures ProcessStartEvent(state).Running?
+    ensures ValidState(ProcessStartEvent(state))
   {
     var process := state.process;
     var activeTokens := Token.GetActiveTokens(process.tokenCollection);
@@ -59,23 +76,33 @@ module ExecutionInit {
     var outgoingFlows := process.processDefinition.nodes[currentLocation].outgoing;
     var flowId := Token.PickOne(outgoingFlows);
     var nextNodeId := process.processDefinition.flows[flowId].targetRef;
+    
+    // 帮助Dafny推理：flowId在flows中，所以targetRef在nodes中
+    assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得出
+    assert nextNodeId in process.processDefinition.nodes;  // 从ValidProcessDefinition得出
+    
     var (tokensWithNext, nextTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
 
     // 获取新的active tokens并更新执行队列
     var newActiveTokens := Token.GetActiveTokens(tokensWithNext);
-    var updatedContext := ExecutionContext.InitializeExecutionQueue(
-                            ExecutionContext.UpdateContext(process.context, nextNodeId),
-                            newActiveTokens
+    
+    var updatedContext := ExecutionContext.CreateConsistentContext(
+                            tokensWithNext,
+                            nextNodeId,
+                            process.context.executionStep + 1
                           );
-
-    Running(Process(
-              processId := process.processId,
-              tokenCollection := tokensWithNext,
-              globalVariables := process.globalVariables,
-              processDefinition := process.processDefinition,
-              executionHistory := process.executionHistory,
-              context := updatedContext
-            ))
+    var newProcess := Process(
+                        processId := process.processId,
+                        tokenCollection := tokensWithNext,
+                        globalVariables := process.globalVariables,
+                        processDefinition := process.processDefinition,
+                        executionHistory := process.executionHistory,
+                        context := updatedContext,
+                        executionQueue := [nextTokenId]
+                      );
+    assert ValidProcessState(newProcess);
+    
+    Running(newProcess)
   }
 
   /**
@@ -126,6 +153,7 @@ module ExecutionInit {
   {
     state.Running? &&
     Token.HasActiveTokens(state.process.tokenCollection) &&
+    ValidProcessDefinition(state.process.processDefinition) &&
     ValidStartEventExecution(state.process)
   }
 

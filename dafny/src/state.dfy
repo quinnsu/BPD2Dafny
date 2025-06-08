@@ -32,7 +32,8 @@ module BPMNState {
     globalVariables: Variables.VariableMap,
     processDefinition: ProcessDefinition.ProcessDef,
     executionHistory: seq<ExecutionEvent>,
-    context: ExecutionContext.Context
+    context: ExecutionContext.Context,
+    executionQueue: seq<Token.TokenId>
   )
 
   /**
@@ -78,6 +79,10 @@ module BPMNState {
 
   /**
     * State invariant
+    every token must be in the process definition，
+    every token in the context queue must be in the token collection and should be active
+    every token in the token collection must be in the context queue
+    the location of every token must be in the process definition
     */
   predicate ValidState(state: State)
   {
@@ -103,9 +108,15 @@ module BPMNState {
   predicate ValidProcessState(process: ProcessObj)
   {
     // all active tokens are in the token collection and their location is in the process definition
-    forall tokenId :: tokenId in GetActiveTokens(process.tokenCollection) ==>
+    (forall tokenId :: tokenId in GetActiveTokens(process.tokenCollection) ==>
                         tokenId in process.tokenCollection.tokens &&
-                        process.tokenCollection.tokens[tokenId].location in process.processDefinition.nodes
+                        process.tokenCollection.tokens[tokenId].location in process.processDefinition.nodes) &&
+    (forall tokenId :: tokenId in process.context.executionQueue ==>
+                        tokenId in process.tokenCollection.tokens &&
+                        process.tokenCollection.tokens[tokenId].status == Active) &&
+    (forall tokenId :: tokenId in GetActiveTokens(process.tokenCollection) ==>
+                        tokenId in process.context.executionQueue) &&
+    ExecutionContext.ValidContext(process.context)
   }
 
   /**
@@ -124,7 +135,15 @@ module BPMNState {
     // all flow source and target nodes exist
     (forall flowId :: flowId in processDefinition.flows ==>
                         var flow := processDefinition.flows[flowId];
-                        flow.sourceRef in processDefinition.nodes && flow.targetRef in processDefinition.nodes)
+                        flow.sourceRef in processDefinition.nodes && flow.targetRef in processDefinition.nodes) &&
+    // all outgoing flows are in the flow collection
+    (forall nodeId :: nodeId in processDefinition.nodes ==>
+                        forall flowId :: flowId in processDefinition.nodes[nodeId].outgoing ==>
+                                          flowId in processDefinition.flows) &&
+    // all incoming flows are in the flow collection
+    (forall nodeId :: nodeId in processDefinition.nodes ==>
+                        forall flowId :: flowId in processDefinition.nodes[nodeId].incoming ==>
+                                          flowId in processDefinition.flows)
   }
 
   /**
@@ -193,19 +212,22 @@ module BPMNState {
                                                globalVariables := Variables.EmptyVariables(),
                                                processDefinition := CreateDummyProcessDef(),
                                                executionHistory := [],
-                                               context := ExecutionContext.CreateInitialContext()
+                                               context := ExecutionContext.CreateInitialContext(),
+                                               executionQueue := []
                                              )
 
   const BPMN_RUNNING_PROCESS_WITNESS : ProcessObj :=
     var emptyTokens := Token.Create();
-    var (tokensWithOne, tokenId) := Token.CreateToken(emptyTokens, "dummy");
+    var (tokensWithOne, tokenId) := Token.CreateToken(emptyTokens, "start");
+    var consistentContext := ExecutionContext.CreateConsistentContext(tokensWithOne, "start", 0);
     Process(
       processId := "witness",
       tokenCollection := tokensWithOne,
       globalVariables := Variables.EmptyVariables(),
       processDefinition := CreateDummyProcessDef(),
       executionHistory := [],
-      context := ExecutionContext.CreateInitialContext()
+      context := consistentContext,
+      executionQueue := [tokenId]
     )
 
   /**
@@ -217,8 +239,9 @@ module BPMNState {
     */
   function GetCurrentLocations(state: State): set<string>
     requires state.Running?
+    requires Token.ValidTokenCollection(state.process.tokenCollection)
   {
-    ExecutionContext.GetCurrentNodes(state.process.tokenCollection, state.process.context)
+    ExecutionContext.GetCurrentNodes(state.process.tokenCollection)
   }
 
   /**
@@ -241,8 +264,9 @@ module BPMNState {
     */
   predicate IsAtNode(state: State, nodeId: string)
     requires state.Running?
+    requires Token.ValidTokenCollection(state.process.tokenCollection)
   {
-    var currentNodes := ExecutionContext.GetCurrentNodes(state.process.tokenCollection, state.process.context);
+    var currentNodes := ExecutionContext.GetCurrentNodes(state.process.tokenCollection);
     nodeId in currentNodes
   }
 
@@ -253,11 +277,12 @@ module BPMNState {
     process: ProcessObj,
     lastExecutedNode: string
   ): ProcessObj
+    requires Token.ValidTokenCollection(process.tokenCollection)
   {
-    var updatedContext := ExecutionContext.ComputeContext(
+    var updatedContext := ExecutionContext.CreateConsistentContext(
                             process.tokenCollection,
                             lastExecutedNode,
-                            process.context
+                            process.context.executionStep
                           );
 
     Process(
@@ -266,7 +291,8 @@ module BPMNState {
       globalVariables := process.globalVariables,
       processDefinition := process.processDefinition,
       executionHistory := process.executionHistory,
-      context := updatedContext
+      context := updatedContext,
+      executionQueue := process.executionQueue
     )
   }
 }

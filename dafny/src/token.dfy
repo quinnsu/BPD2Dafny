@@ -3,6 +3,7 @@
  */
 include "utils/Variables.dfy"
 include "utils/option.dfy"
+include "process.dfy"
 /**
   * Token module for BPMN execution.
   * 
@@ -12,6 +13,7 @@ include "utils/option.dfy"
   */
 module Token {
 
+  import ProcessDefinition
   import opened Optional
   /**
     * Token ID type
@@ -86,6 +88,7 @@ module Token {
     * Create an empty token collection
     */
   function Create(): Collection
+    ensures |GetActiveTokens(Create())| == 0
     ensures ValidTokenCollection(Create())
   {
     TokenCollection(
@@ -110,8 +113,13 @@ module Token {
             newTc.tokens[tokenId].location == location &&
             tokenId in GetActiveTokens(newTc) &&
             |newTc.tokens| == |tc.tokens| + 1 &&
+            |GetActiveTokens(newTc)| == |GetActiveTokens(tc)| + 1 &&
             tokenId !in tc.tokens  // 关键：新tokenId不在原集合中
     ensures ValidTokenCollection(CreateToken(tc, location).0)
+    ensures var (newTc, tokenId) := CreateToken(tc, location);
+            // 关键：CreateToken保持原有tokens不变
+            forall originalTokenId :: originalTokenId in tc.tokens ==> 
+              originalTokenId in newTc.tokens && newTc.tokens[originalTokenId] == tc.tokens[originalTokenId]
   {
     var tokenId := tc.nextTokenId;
     assert tokenId !in tc.tokens;  // 这个断言可能失败
@@ -126,11 +134,69 @@ module Token {
                  );
 
     var newTokens := tc.tokens[tokenId := token];
-    assert |newTokens| == |tc.tokens| + 1;
-    (tc.(
-     tokens := newTokens,
-     nextTokenId := tokenId + 1
-     ), tokenId)
+    var newTc := tc.(tokens := newTokens, nextTokenId := tokenId + 1);
+    assert tokenId in GetActiveTokens(newTc);
+    assert GetActiveTokens(newTc) == GetActiveTokens(tc) + {tokenId};
+    
+    (newTc, tokenId)
+  }
+
+  /**
+    * create tokens for flows
+    * 
+    * @param tokens Token collection
+    * @param flows Set of flow IDs
+    * @param flowDefinitions Map of flow definitions
+    * @returns Updated token collection and set of new token IDs
+    */
+  function CreateTokensForFlows(
+    tokens: Collection,
+    flows: set<string>,
+    flowDefinitions: map<string, ProcessDefinition.SequenceFlow>
+  ): (Collection, set<TokenId>)
+    requires forall flowId :: flowId in flows ==> flowId in flowDefinitions
+    requires ValidTokenCollection(tokens)
+    ensures var (finalTokens, newTokenIds) := CreateTokensForFlows(tokens, flows, flowDefinitions);
+            // 核心性质：新创建的token数量等于flows数量
+            |newTokenIds| == |flows| &&
+            // 所有新token都在最终的token集合中且为Active状态
+            (forall tokenId :: tokenId in newTokenIds ==>
+                                 tokenId in finalTokens.tokens &&
+                                 finalTokens.tokens[tokenId].status == Active) &&
+            // 新token都不在原始token集合中（唯一性）
+            (forall tokenId :: tokenId in newTokenIds ==> tokenId !in tokens.tokens) &&
+            // 原有token保持不变
+            (forall tokenId :: tokenId in tokens.tokens ==>
+                                 tokenId in finalTokens.tokens &&
+                                 finalTokens.tokens[tokenId] == tokens.tokens[tokenId]) &&
+            // 最终token集合大小 = 原始大小 + 新token数量
+            |finalTokens.tokens| == |tokens.tokens| + |flows| &&
+            // 保持有效性
+            ValidTokenCollection(finalTokens) &&
+            // 新增：每个flow的目标节点都有对应的新token
+            (forall flowId :: flowId in flows ==>
+                                exists tokenId :: tokenId in newTokenIds &&
+                                                  finalTokens.tokens[tokenId].location == flowDefinitions[flowId].targetRef &&
+                                                  finalTokens.tokens[tokenId].status == Active)
+    decreases |flows|
+  {
+    if |flows| == 0 then
+      (tokens, {})
+    else
+      var flowId := PickOne(flows);
+      var remainingFlows := flows - {flowId};
+      var targetNodeId := flowDefinitions[flowId].targetRef;
+      var (tokensWithNew, newTokenId) := CreateToken(tokens, targetNodeId);
+
+      assert |tokensWithNew.tokens| == |tokens.tokens| + 1;
+      assert |remainingFlows| == |flows| - 1;
+
+      var (finalTokens, remainingTokenIds) := CreateTokensForFlows(tokensWithNew, remainingFlows, flowDefinitions);
+
+      assert |remainingTokenIds| == |remainingFlows|;
+      assert newTokenId !in remainingTokenIds;
+
+      (finalTokens, remainingTokenIds + {newTokenId})
   }
 
   /**
@@ -186,6 +252,20 @@ module Token {
     requires ValidTokenCollection(tc)
     requires forall id :: id in tokenIds ==> id in tc.tokens && tc.tokens[id].status == Active
     ensures ValidTokenCollection(ConsumeTokens(tc, tokenIds))
+    ensures var result := ConsumeTokens(tc, tokenIds);
+            // 关键：ConsumeTokens不删除tokens（双向包含，token集合完全相同）
+            forall tokenId :: tokenId in tc.tokens ==> tokenId in result.tokens
+    ensures var result := ConsumeTokens(tc, tokenIds);
+            // 反向包含：result中的tokens都在原集合中
+            forall tokenId :: tokenId in result.tokens ==> tokenId in tc.tokens
+    ensures var result := ConsumeTokens(tc, tokenIds);
+            // 被消费的tokens状态变为Consumed
+            forall tokenId :: tokenId in tokenIds ==> 
+              tokenId in result.tokens && result.tokens[tokenId].status == Consumed
+    ensures var result := ConsumeTokens(tc, tokenIds);
+            // 未被消费的tokens保持原状态
+            forall tokenId :: tokenId in tc.tokens && tokenId !in tokenIds ==> 
+              tokenId in result.tokens && result.tokens[tokenId] == tc.tokens[tokenId]
     decreases |tokenIds|
   {
     if |tokenIds| == 0 then tc
@@ -373,19 +453,7 @@ module Token {
     )
   }
 
-  /**
-    * Mark a token as having an error
-    */
-  function ErrorToken(tc: Collection, tokenId: TokenId): Collection
-    requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
-  {
-    var token := tc.tokens[tokenId];
-    var updatedToken := token.(status := Error);
-
-    tc.(
-    tokens := tc.tokens[tokenId := updatedToken]
-    )
-  }
+ 
 
   /**
     * Get all tokens at a specific node
@@ -561,4 +629,100 @@ module Token {
     set tokenId | tokenId in tc.tokens && tc.tokens[tokenId].status == Waiting
   }
 
+/**
+  * Lemma: Creating a token preserves active tokens
+  */
+lemma CreateTokenPreservesActiveTokens(tc: Collection, location: NodeId)
+  requires ValidTokenCollection(tc)
+  ensures var (newTc, newTokenId) := CreateToken(tc, location);
+          GetActiveTokens(newTc) == GetActiveTokens(tc) + {newTokenId}
+{
+  var (newTc, newTokenId) := CreateToken(tc, location);
+
+  forall tokenId | tokenId in GetActiveTokens(newTc)
+    ensures tokenId in GetActiveTokens(tc) + {newTokenId}
+  {
+    assert tokenId in newTc.tokens && newTc.tokens[tokenId].status == Active;
+  }
+  
+  forall tokenId | tokenId in GetActiveTokens(tc) + {newTokenId}
+    ensures tokenId in GetActiveTokens(newTc)
+  {
+    if tokenId == newTokenId {
+      assert newTc.tokens[tokenId].status == Active;
+    } else {
+      assert tokenId in GetActiveTokens(tc);
+      assert newTc.tokens[tokenId] == tc.tokens[tokenId];
+    }
+  }
+}
+
+/**
+  * Lemma: Consuming a token reduces active tokens
+  */
+lemma ConsumeTokenReducesActiveTokens(tc: Collection, tokenId: TokenId)
+  requires ValidTokenCollection(tc)
+  requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
+  ensures var newTc := ConsumeToken(tc, tokenId);
+          GetActiveTokens(newTc) == GetActiveTokens(tc) - {tokenId}
+{
+  var newTc := ConsumeToken(tc, tokenId);
+  
+  forall tid | tid in GetActiveTokens(newTc)
+    ensures tid in GetActiveTokens(tc) - {tokenId}
+  {
+    assert tid != tokenId; // 因为tokenId已被消费
+    assert newTc.tokens[tid] == tc.tokens[tid]; // 其他token保持不变
+  }
+}
+
+lemma CreateTokensForFlowsLemma(
+  tokens: Collection,
+  flows: set<string>,
+  flowDefinitions: map<string, ProcessDefinition.SequenceFlow>
+)
+  requires ValidTokenCollection(tokens)
+  requires forall flowId :: flowId in flows ==> flowId in flowDefinitions
+  ensures var (finalTokens, newTokenIds) := CreateTokensForFlows(tokens, flows, flowDefinitions);
+          |GetActiveTokens(finalTokens)| == |GetActiveTokens(tokens)| + |flows| &&
+          |newTokenIds| == |flows|
+  decreases |flows|
+{
+}
+
+/**
+  * Lemma: ConsumeTokens对active token数量的影响
+  */
+lemma ConsumeTokensReducesActiveTokens(
+  tc: Collection, 
+  tokenIds: set<TokenId>
+)
+  decreases |tokenIds|
+  requires ValidTokenCollection(tc)
+  requires forall id :: id in tokenIds ==> id in tc.tokens && tc.tokens[id].status == Active
+  ensures var result := ConsumeTokens(tc, tokenIds);
+          |GetActiveTokens(result)| == |GetActiveTokens(tc)| - |tokenIds|
+{
+  if |tokenIds| == 0 {
+    // 基础情况：没有token要消费
+    assert ConsumeTokens(tc, tokenIds) == tc;
+    assert |GetActiveTokens(tc)| == |GetActiveTokens(tc)| - 0;
+  } else {
+    // 归纳情况：消费一个token，然后递归
+    var tokenId := PickOne(tokenIds);
+    var remainingIds := tokenIds - {tokenId};
+    var tc' := ConsumeToken(tc, tokenId);
+    
+    // 使用已有的lemma证明单个token的消费
+    ConsumeTokenReducesActiveTokens(tc, tokenId);
+    assert |GetActiveTokens(tc')| == |GetActiveTokens(tc)| - 1;
+    
+    // 递归调用
+    ConsumeTokensReducesActiveTokens(tc', remainingIds);
+    assert |GetActiveTokens(ConsumeTokens(tc', remainingIds))| == |GetActiveTokens(tc')| - |remainingIds|;
+    
+    // 数学推理
+    assert |GetActiveTokens(ConsumeTokens(tc, tokenIds))| == |GetActiveTokens(tc)| - |tokenIds|;
+  }
+}
 }
