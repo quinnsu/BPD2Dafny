@@ -49,14 +49,13 @@ module ExecutionInit {
                      globalVariables := Variables.EmptyVariables(),
                      processDefinition := processDef,
                      executionHistory := [],
-                     context := initialContext,
-                     executionQueue := [startTokenId]
+                     context := initialContext
                    );
 
     // Debug: verify we have exactly one active token
     var activeTokens := Token.GetActiveTokens(tokensWithStart);
     assert startTokenId in activeTokens;
-
+ 
 
     Running(process)
   }
@@ -97,8 +96,7 @@ module ExecutionInit {
                         globalVariables := process.globalVariables,
                         processDefinition := process.processDefinition,
                         executionHistory := process.executionHistory,
-                        context := updatedContext,
-                        executionQueue := [nextTokenId]
+                        context := updatedContext
                       );
     assert ValidProcessState(newProcess);
     

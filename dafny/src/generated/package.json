@@ -1,0 +1,33 @@
+{
+  "name": "bpmn-engine-dafny",
+  "version": "1.0.0",
+  "description": "A formally verified BPMN 2.0 execution engine generated from Dafny",
+  "main": "bpmn-engine.js",
+  "scripts": {
+    "start": "node simple-demo.js",
+    "test": "node simple-demo.js",
+    "demo": "node simple-demo.js",
+    "simple": "node simple-demo.js",
+    "engine": "node bpmn-engine.js"
+  },
+  "dependencies": {
+    "bignumber.js": "^9.1.2"
+  },
+  "keywords": [
+    "bpmn",
+    "workflow",
+    "process",
+    "dafny",
+    "formal-verification",
+    "javascript"
+  ],
+  "author": "Generated from Dafny BPMN Specification",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-repo/BPD2Dafny"
+  }
+}

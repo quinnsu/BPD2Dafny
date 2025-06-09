@@ -18,10 +18,15 @@ module BPMNState {
     * error code type
     */
   datatype ErrorCode =
-    | ValidationError(message: string)
-    | RuntimeError(message: string)
-    | TimeoutError(message: string)
-    | ResourceError(message: string)
+    | ValidationError(message: string)        // 流程定义验证错误
+    | RuntimeError(message: string)           // 一般运行时错误
+    | TimeoutError(message: string)           // 超时错误
+    | ResourceError(message: string)          // 资源错误
+    | DeadlockError(details: string)          // 死锁错误
+    | ExecutionError(nodeId: string, message: string)  // 节点执行错误
+    | FlowError(flowId: string, message: string)       // 流程跳转错误
+    | TokenError(tokenId: Token.TokenId, message: string)  // Token相关错误
+    | DefinitionError(message: string)                    // 流程定义错误
 
   /**
     * process object - contains the complete execution context
@@ -32,8 +37,7 @@ module BPMNState {
     globalVariables: Variables.VariableMap,
     processDefinition: ProcessDefinition.ProcessDef,
     executionHistory: seq<ExecutionEvent>,
-    context: ExecutionContext.Context,
-    executionQueue: seq<Token.TokenId>
+    context: ExecutionContext.Context
   )
 
   /**
@@ -212,8 +216,7 @@ module BPMNState {
                                                globalVariables := Variables.EmptyVariables(),
                                                processDefinition := CreateDummyProcessDef(),
                                                executionHistory := [],
-                                               context := ExecutionContext.CreateInitialContext(),
-                                               executionQueue := []
+                                               context := ExecutionContext.CreateInitialContext()
                                              )
 
   const BPMN_RUNNING_PROCESS_WITNESS : ProcessObj :=
@@ -226,8 +229,7 @@ module BPMNState {
       globalVariables := Variables.EmptyVariables(),
       processDefinition := CreateDummyProcessDef(),
       executionHistory := [],
-      context := consistentContext,
-      executionQueue := [tokenId]
+      context := consistentContext
     )
 
   /**
@@ -291,8 +293,38 @@ module BPMNState {
       globalVariables := process.globalVariables,
       processDefinition := process.processDefinition,
       executionHistory := process.executionHistory,
-      context := updatedContext,
-      executionQueue := process.executionQueue
+      context := updatedContext
     )
+  }
+
+
+  function CreateDeadlockError(process: ProcessObj, details: string): State
+  {
+    State.Error(process, DeadlockError(details))
+  }
+
+  function CreateTokenError(process: ProcessObj, tokenId: Token.TokenId, message: string): State
+  {
+    State.Error(process, TokenError(tokenId, message))
+  }
+
+  function CreateExecutionError(process: ProcessObj, nodeId: string, message: string): State
+  {
+    State.Error(process, ExecutionError(nodeId, message))
+  }
+
+  function CreateFlowError(process: ProcessObj, flowId: string, message: string): State
+  {
+    State.Error(process, FlowError(flowId, message))
+  }
+
+  function CreateValidationError(process: ProcessObj, message: string): State
+  {
+    State.Error(process, ValidationError(message))
+  }
+
+  function CreateRuntimeError(process: ProcessObj, message: string): State
+  {
+    State.Error(process, RuntimeError(message))
   }
 }

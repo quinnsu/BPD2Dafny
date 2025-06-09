@@ -3,23 +3,21 @@
  */
 include "token.dfy"
 include "utils/option.dfy"
+include "utils/Seq.dfy"
 
 module ExecutionContext {
   import opened Token
   import opened Optional
+  import opened Seq
 
-  /**
-    * 执行上下文 - 简化设计，避免概念重复
-    */
+
   datatype Context = ExecutionContext(
-    lastExecutedNode: string,         // 最后执行的节点（用于调试）
-    executionStep: nat,               // 执行步数（用于监控）
-    executionQueue: seq<Token.TokenId> // 执行队列，管理待执行的tokens
+    lastExecutedNode: string,         
+    executionStep: nat,               
+    executionQueue: seq<Token.TokenId> 
   )
 
-  /**
-    * 创建初始执行上下文
-    */
+
   function CreateInitialContext(): Context
   {
     ExecutionContext(
@@ -31,9 +29,7 @@ module ExecutionContext {
 
 
 
-  /**
-    * 初始化执行队列，将所有active tokens加入队列
-    */
+
   function InitializeExecutionQueue(
     context: Context,
     activeTokens: set<Token.TokenId>
@@ -43,38 +39,69 @@ module ExecutionContext {
     context.(executionQueue := tokenSequence)
   }
 
-  /**
-    * 将token添加到执行队列尾部
-    */
+
   function EnqueueToken(context: Context, tokenId: Token.TokenId): Context
   {
     context.(executionQueue := context.executionQueue + [tokenId])
   }
 
-  /**
-    * 从执行队列头部取出token
-    */
+
   function DequeueToken(context: Context): (Context, Token.TokenId)
     requires |context.executionQueue| > 0
     ensures |DequeueToken(context).0.executionQueue| == |context.executionQueue| - 1
   {
-    var tokenId := context.executionQueue[0];
-    var newQueue := context.executionQueue[1..];
+    var tokenId := Seq.First(context.executionQueue);
+    var newQueue := Seq.DropFirst(context.executionQueue);
     var newContext := context.(executionQueue := newQueue);
     (newContext, tokenId)
   }
 
-  /**
-    * 检查执行队列是否为空
-    */
+
+  function PeekFirstToken(context: Context): Token.TokenId
+    requires |context.executionQueue| > 0
+  {
+    Seq.First(context.executionQueue)
+  }
+
+
+
+  function PeekLastToken(context: Context): Token.TokenId
+    requires |context.executionQueue| > 0
+  {
+    Seq.Last(context.executionQueue)
+  }
+
+
+
+  function FilterExecutionQueue(
+    context: Context, 
+    isValid: Token.TokenId -> bool
+  ): seq<Token.TokenId>
+  {
+    FilterExecutionQueueHelper(context.executionQueue, isValid)
+  }
+
+
+  function FilterExecutionQueueHelper(
+    queue: seq<Token.TokenId>,
+    isValid: Token.TokenId -> bool
+  ): seq<Token.TokenId>
+    decreases |queue|
+  {
+    if |queue| == 0 then []
+    else
+      var first := queue[0];
+      var rest := FilterExecutionQueueHelper(queue[1..], isValid);
+      if isValid(first) then [first] + rest else rest
+  }
+
+
   predicate IsExecutionQueueEmpty(context: Context)
   {
     |context.executionQueue| == 0
   }
 
-  /**
-    * 将set转换为sequence（建立元素等价关系）
-    */
+
   function SetToSequence(s: set<Token.TokenId>): seq<Token.TokenId>
     ensures |SetToSequence(s)| == |s|
     ensures forall tokenId :: tokenId in s <==> tokenId in SetToSequence(s)
@@ -86,17 +113,15 @@ module ExecutionContext {
       [x] + SetToSequence(s - {x})
   }
 
-  /**
-    *return the location of the active tokens
-    */
+
   function {:opaque} GetCurrentNodes(
     tokenCollection: Token.Collection ): set<string>
     requires Token.ValidTokenCollection(tokenCollection)
-    ensures   // 确保返回的位置对应于active tokens的位置
+    ensures  
             forall location :: location in GetCurrentNodes(tokenCollection) <==> 
               (exists tokenId :: tokenId in Token.GetActiveTokens(tokenCollection) &&
                                  tokenCollection.tokens[tokenId].location == location)
-    ensures   // 如果有active token在某位置，则该位置在结果中
+    ensures  
             forall tokenId :: tokenId in Token.GetActiveTokens(tokenCollection) ==>
               tokenCollection.tokens[tokenId].location in GetCurrentNodes(tokenCollection)
   {
@@ -104,9 +129,7 @@ module ExecutionContext {
       tokenCollection.tokens[tokenId].location
   }
 
-  /**
-    * 替代原来的ComputeContext函数
-    */
+
   function ComputeContext(
     tokenCollection: Token.Collection,
     lastExecutedNode: string,
@@ -130,18 +153,13 @@ module ExecutionContext {
     )
   }
 
-  /**
-    * 检查上下文是否有
-    */
+
   predicate ValidContext(context: Context)
   {
     context.executionStep >= 0
   }
 
-  /**
-    * 检查上下文与token集合的一致性
-    * 核心不变式：executionQueue中的所有token都必须在tokenCollection中且为Active状态
-    */
+
   predicate ValidContextWithTokens(context: Context, tokenCollection: Token.Collection)
   {
     ValidContext(context) &&
@@ -157,9 +175,7 @@ module ExecutionContext {
        tokenId in context.executionQueue)
   }
 
-  /**
-    * 创建一致的执行上下文（从token集合同步）
-    */
+
   function CreateConsistentContext(
     tokenCollection: Token.Collection,
     lastExecutedNode: string,
@@ -180,9 +196,7 @@ module ExecutionContext {
     )
   }
 
-  /**
-    * 安全的Token入队操作 - 只允许Active token入队
-    */
+
   function SafeEnqueueToken(
     context: Context, 
     tokenId: Token.TokenId, 
@@ -220,10 +234,10 @@ module ExecutionContext {
             tokenId in tokenCollection.tokens &&
             tokenCollection.tokens[tokenId].status == Active &&
             |newContext.executionQueue| == |context.executionQueue| - 1 &&
-            tokenId == context.executionQueue[0]
+            tokenId == Seq.First(context.executionQueue)
   {
-    var tokenId := context.executionQueue[0];
-    var newQueue := context.executionQueue[1..];
+    var tokenId := Seq.First(context.executionQueue);
+    var newQueue := Seq.DropFirst(context.executionQueue);
     var newContext := context.(executionQueue := newQueue);
     (newContext, tokenId)
   }

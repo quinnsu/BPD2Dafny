@@ -583,12 +583,22 @@ module Token {
     */
   function ReactivateToken(tc: Collection, tokenId: TokenId): Collection
     requires tokenId in tc.tokens && tc.tokens[tokenId].status == Suspended
+  {
+    var token := tc.tokens[tokenId];
+    var updatedToken := token.(status := Active);
+    tc.(tokens := tc.tokens[tokenId := updatedToken])
+  }
 
   /**
     * Set token to error state
     */
   function SetTokenError(tc: Collection, tokenId: TokenId, errorMsg: string): Collection
     requires tokenId in tc.tokens && tc.tokens[tokenId].status == Active
+  {
+    var token := tc.tokens[tokenId];
+    var updatedToken := token.(status := Error);
+    tc.(tokens := tc.tokens[tokenId := updatedToken])
+  }
 
   /**
     * Lemma: Non-empty set has positive cardinality

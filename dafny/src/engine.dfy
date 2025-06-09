@@ -10,6 +10,7 @@ include "./execution_init.dfy"
 include "./utils/option.dfy"
 include "./Context.dfy"
 include "./utils/Array.dfy"
+include "./utils/Seq.dfy"
 module ExecutionEngine {
   import opened Token
   import opened BPMNState
@@ -19,7 +20,7 @@ module ExecutionEngine {
   import opened Optional
   import opened ExecutionContext
   import opened Arrays
-
+  import opened Seq
   /**
     * The main execution function with a scheduler
     
@@ -61,7 +62,7 @@ module ExecutionEngine {
           state.process.tokenCollection.tokens[tokenId].status == Active then
          ExecuteTokenStep(state, tokenId)
        else
-         BPMNState.Error(state.process, ValidationError("Token is not active"))
+         BPMNState.Error(state.process, TokenError(tokenId, "Token is not active"))
   }
 */
 
@@ -74,7 +75,7 @@ module ExecutionEngine {
     * 
     * Logic:
     * 1. If execution queue is empty, return terminated state (no tokens left)
-    * 2. If all tokens cannot be executed, return error state (deadlock)
+    * 2. If all tokens cannot be started but the execution queue is not empty, return error state (deadlock)
     * 3. Otherwise, execute the first token that can be executed immediately
     */
   function ExecuteStep(state: ExecutingState): State
@@ -91,14 +92,12 @@ module ExecutionEngine {
       BPMNState.Terminated(process)
     else
       // Check if any token can be executed immediately
-      //var executableTokens := GetImmediatelyExecutableTokens(state);
       var executableTokensFromQueue := GetExecutableTokensFromQueue(state);
       if |executableTokensFromQueue| == 0 then
-        // Deadlock: no tokens can be executed
-        BPMNState.Error(process, ValidationError("Deadlock detected: no tokens can be executed"))
+        BPMNState.Error(process, DeadlockError("No tokens can be executed in current state"))
       else
         // Execute the first executable token
-        var tokenToExecute := executableTokensFromQueue[0];
+        var tokenToExecute := Seq.First(executableTokensFromQueue);
         ExecuteTokenStep(state, tokenToExecute)
   }
 
@@ -132,7 +131,7 @@ module ExecutionEngine {
             if state.Running? then
               ExecuteEndEvent(state, tokenId)  
             else
-              BPMNState.Error(state.process, ValidationError("Invalid state for EndEvent"))
+              BPMNState.Error(state.process, ExecutionError(token.location, "Invalid state for EndEvent"))
           case Task(taskType) => ExecuteTask(state, tokenId, taskType)
           case Gateway(gatewayType) => ExecuteGateway(state, tokenId, gatewayType)
           case IntermediateEvent(eventType) => ExecuteIntermediateEvent(state, tokenId, eventType)
@@ -194,36 +193,62 @@ module ExecutionEngine {
 
 
 // Filter all tokens from execution queue that can be executed immediately
-  function {:verify false} GetExecutableTokensFromQueue(state: ExecutingState): seq<Token.TokenId>
+  function GetExecutableTokensFromQueue(state: ExecutingState): seq<Token.TokenId>
     requires ValidState(state)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    ensures var result := GetExecutableTokensFromQueue(state);
+            ValidState(state) &&
+            (forall tokenId :: tokenId in result ==>
+              tokenId in state.process.context.executionQueue &&
+              tokenId in state.process.tokenCollection.tokens &&
+              state.process.tokenCollection.tokens[tokenId].status == Active &&
+              CanExecuteTokenImmediately(state, tokenId))
     ensures forall tokenId :: tokenId in GetExecutableTokensFromQueue(state) ==> 
               tokenId in state.process.context.executionQueue && 
               tokenId in state.process.tokenCollection.tokens &&
               state.process.tokenCollection.tokens[tokenId].status == Active && 
               CanExecuteTokenImmediately(state, tokenId)
     ensures |GetExecutableTokensFromQueue(state)| <= |state.process.context.executionQueue|
+    decreases |state.process.context.executionQueue|
   {
-    // 简化实现：遍历执行队列，过滤可执行的tokens
-    if |state.process.context.executionQueue| == 0 then
-      []
-    else
-      var tokenId := state.process.context.executionQueue[0];
-      var rest := state.process.context.executionQueue[1..];
-      var restState := state.(process := state.process.(context := state.process.context.(executionQueue := rest)));
-      var restResult := GetExecutableTokensFromQueue(restState);
-      
-      if tokenId in state.process.tokenCollection.tokens &&
-         state.process.tokenCollection.tokens[tokenId].status == Active &&
-         CanExecuteTokenImmediately(state, tokenId) then
-        [tokenId] + restResult
-      else
-        restResult
+    FilterExecutableTokens(state.process.context.executionQueue, state)
   }
  
+function FilterExecutableTokens(
+  queue: seq<Token.TokenId>, 
+  state: ExecutingState
+): seq<Token.TokenId>
+  requires ValidState(state)
+  requires ValidProcessDefinition(state.process.processDefinition)
+  requires ValidProcessState(state.process)
+  requires forall tokenId :: tokenId in queue ==>
+             tokenId in state.process.tokenCollection.tokens &&
+             state.process.tokenCollection.tokens[tokenId].status == Active
+  ensures var result := FilterExecutableTokens(queue, state);
+          forall tokenId :: tokenId in result ==> tokenId in queue
+  ensures var result := FilterExecutableTokens(queue, state);
+          forall tokenId :: tokenId in result ==>
+            tokenId in state.process.tokenCollection.tokens &&
+            state.process.tokenCollection.tokens[tokenId].status == Active &&
+            CanExecuteTokenImmediately(state, tokenId)
+  ensures var result := FilterExecutableTokens(queue, state);
+          |result| <= |queue|
+  decreases |queue|
+{
+  if |queue| == 0 then []
+  else
+    var tokenId := Seq.First(queue);
+    var rest := FilterExecutableTokens(Seq.DropFirst(queue), state);
+    
+    if tokenId in state.process.tokenCollection.tokens &&
+       state.process.tokenCollection.tokens[tokenId].status == Active &&
+       CanExecuteTokenImmediately(state, tokenId) then
+      [tokenId] + rest
+    else
+      rest
+}
 
-  /**
-    * 执行单个token的步骤
-    */
   function ExecuteTokenStep(state: ExecutingState, tokenId: Token.TokenId): State
     requires ValidState(state)
     requires tokenId in state.process.tokenCollection.tokens
@@ -297,11 +322,10 @@ module ExecutionEngine {
     var remainingActiveTokens := GetActiveTokens(tokensAfterConsume);
     
     if |remainingActiveTokens| == 0 then
-      // 没有活跃tokens了，流程正常完成
       assert ValidProcessState(updatedProcess);
       BPMNState.Completed(updatedProcess, process.globalVariables)
     else
-      BPMNState.Error(process, ValidationError("Invalid state for EndEvent"))
+      BPMNState.Error(process, ExecutionError(token.location, "Invalid state for EndEvent"))
   }
   // execute the step of a task
   function ExecuteTask(state: ExecutingState, tokenId: Token.TokenId, taskType: TaskType): State
@@ -341,7 +365,7 @@ module ExecutionEngine {
           if CanExecuteParallelFork(state, tokenId, outgoingFlows) then
             ExecuteParallelFork(state, tokenId, outgoingFlows)
           else
-            BPMNState.Error(process, ValidationError("Cannot execute parallel fork"))
+            BPMNState.Error(process, DefinitionError("outgoingFlows should be greater than 1"))
         else if |incomingFlows| > 1 then
           if CanExecuteParallelJoin(state, tokenId) then
             ExecuteParallelJoin(state, tokenId)
@@ -351,7 +375,7 @@ module ExecutionEngine {
         else
           ExecuteSimplePassThrough(state, tokenId)
       case _ =>
-        BPMNState.Error(process, ValidationError("Invalid gateway type"))
+        BPMNState.Error(process, DefinitionError("Invalid gateway type"))
     }
   }
 
@@ -433,7 +457,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
                                 globalVariables := process.globalVariables,  // 可以在这里更新变量
                                 processDefinition := process.processDefinition,
                                 executionHistory := newHistory,
-                                context := updatedContext  // 使用新的context
+                                context := updatedContext
                               );
 
         // 验证最终的Process对象
@@ -441,10 +465,10 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
         
         Running(updatedProcess)
       else
-        BPMNState.Error(process, ValidationError("Flow not found in process definition"))
+        BPMNState.Error(process, FlowError(flowId, "Flow not found in process definition"))
     else
       // Multiple output flows - this is usually an error for UserTask
-      BPMNState.Error(process, ValidationError("UserTask should not have multiple outgoing flows"))
+      BPMNState.Error(process, ExecutionError(token.location, "UserTask should not have multiple outgoing flows"))
   }
 
   /**
@@ -527,9 +551,9 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
                   context := updatedContext
                 ))
       else
-        BPMNState.Error(process, ValidationError("Flow not found in process definition"))
+        BPMNState.Error(process, FlowError(flowId, "Flow not found in process definition"))
     else
-      BPMNState.Error(process, ValidationError(taskType + " should have exactly one outgoing flow"))
+      BPMNState.Error(process, ExecutionError(token.location, taskType + " should have exactly one outgoing flow"))
   }
 
   /**
@@ -554,12 +578,12 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
       if forall flowId :: flowId in outgoingFlows ==> flowId in process.processDefinition.flows then
         ExecuteParallelFork(state, tokenId, outgoingFlows)
       else
-        BPMNState.Error(process, ValidationError("Some outgoing flows not found in process definition"))
+        BPMNState.Error(process, ExecutionError(token.location, "Some outgoing flows not found in process definition"))
     else if |incomingFlows| > 1 then
       if CanExecuteParallelJoin(state, tokenId) then
         ExecuteParallelJoin(state, tokenId)
       else
-        BPMNState.Error(process, ValidationError("Cannot execute parallel join"))
+        BPMNState.Error(process, ExecutionError(token.location, "Cannot execute parallel join"))
     else
       ExecuteSimplePassThrough(state, tokenId)
   }
@@ -890,7 +914,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     var tokensAfterConsume := Token.ConsumeTokens(process.tokenCollection, tokensAtLocation);
 
     // 利用ConsumeMultipleTokens的不变式4：消费后该位置无active tokens
-    assume GetActiveTokensAtLocation(tokensAfterConsume, location) == {};
+    assert GetActiveTokensAtLocation(tokensAfterConsume, location) == {};
 
     // 创建新token在下游（parallel join应该只有一个输出）
     if |currentNode.outgoing| == 1 then
@@ -974,9 +998,9 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
 
         result
       else
-        BPMNState.Error(process, ValidationError("Outgoing flow not found"))
+        BPMNState.Error(process, FlowError(outgoingFlow, "Outgoing flow not found"))
     else
-      BPMNState.Error(process, ValidationError("Parallel join should have exactly one outgoing flow"))
+      BPMNState.Error(process, ExecutionError(token.location, "Parallel join should have exactly one outgoing flow"))
   }
 
   /** Only when all tokens arrive the parallel gateway, can the parallel be executed */

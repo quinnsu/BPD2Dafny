@@ -1,0 +1,22 @@
+file_format_version = "1.0"
+dafny_version = "4.8.1.0"
+[options_by_module.Optional]
+legacy-module-names = false
+[options_by_module.ProcessDefinition]
+legacy-module-names = false
+[options_by_module.Token]
+legacy-module-names = false
+[options_by_module.Variables]
+legacy-module-names = false
+[options_by_module.Seq]
+legacy-module-names = false
+[options_by_module.ExecutionContext]
+legacy-module-names = false
+[options_by_module.BPMNState]
+legacy-module-names = false
+[options_by_module.ExecutionInit]
+legacy-module-names = false
+[options_by_module.Arrays]
+legacy-module-names = false
+[options_by_module.ExecutionEngine]
+legacy-module-names = false
