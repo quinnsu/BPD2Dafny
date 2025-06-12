@@ -106,7 +106,8 @@ function generateProcessDefinitionCode(mainProcess, startEvents, endEvents, task
     code += `    const BPMNStateModule = engineModule.BPMNState;\n`;
     code += `    const ExecutionInitModule = engineModule.ExecutionInit;\n`;
     code += `    const ExecutionEngineModule = engineModule.ExecutionEngine;\n`;
-    code += `    const TokenModule = engineModule.Token;\n\n`;
+    code += `    const TokenModule = engineModule.Token;\n`;
+    code += `    const VariablesModule = engineModule.Variables;\n\n`;
     
     code += `    if (typeof ProcessDefinitionModule !== 'undefined' && typeof DafnyModule !== 'undefined') {\n`;
     code += `        console.log("Module imported successfully, starting to create process definition...");\n\n`;
@@ -148,6 +149,35 @@ function generateProcessDefinitionCode(mainProcess, startEvents, endEvents, task
     return code;
 }
 
+function generateTaskDataCode(taskData) {
+    let code = `                OptionalModule.Option.create_Some(\n`;
+    code += `                    ProcessDefinitionModule.TaskData.create_TaskDataConfig(\n`;
+    
+    // generate input variables
+    code += `                        DafnyModule.Seq.of(\n`;
+    if (taskData.inputVariables && taskData.inputVariables.length > 0) {
+        const inputVars = taskData.inputVariables.map(variable => {
+            return `                            DafnyModule.Seq.UnicodeFromString("${variable.name}")`;
+        }).join(',\n');
+        code += inputVars + '\n';
+    }
+    code += `                        ),\n`;
+    
+    // generate output variables
+    code += `                        DafnyModule.Seq.of(\n`;
+    if (taskData.outputVariables && taskData.outputVariables.length > 0) {
+        const outputVars = taskData.outputVariables.map(variable => {
+            return `                            DafnyModule.Seq.UnicodeFromString("${variable.name}")`;
+        }).join(',\n');
+        code += outputVars + '\n';
+    }
+    code += `                        )\n`;
+    code += `                    )\n`;
+    code += `                )  // task data configuration\n`;
+    
+    return code;
+}
+
 function generateNodeCode(element, nodeType, incomingFlows, outgoingFlows) {
     const nodeId = element._id;
 
@@ -182,7 +212,14 @@ function generateNodeCode(element, nodeType, incomingFlows, outgoingFlows) {
         case 'Task':
             code += `            ProcessDefinitionModule.NodeType.create_Task(\n`;
             code += `                ProcessDefinitionModule.TaskType.create_UserTask(),\n`;
-            code += `                OptionalModule.Option.create_None()  // 空的任务数据配置\n`;
+            
+            // Check if there is task data configuration
+            if (element.taskData && element.taskData.inputVariables && element.taskData.outputVariables) {
+                code += generateTaskDataCode(element.taskData);
+            } else {
+                code += `                OptionalModule.Option.create_None()  // empty task data configuration\n`;
+            }
+            
             code += `            ),\n`;
             break;
         case 'ParallelGateway':

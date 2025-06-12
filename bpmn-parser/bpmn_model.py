@@ -1,7 +1,8 @@
 import xml.etree.ElementTree as ET
 from bpmn_types import (
     BPMN_MAPPINGS, NS, UserTask, SequenceFlow, Gateway, 
-    ExclusiveGateway, ServiceTask, CallActivity
+    ExclusiveGateway, ServiceTask, CallActivity, Task, 
+    DataObject, DataObjectReference
 )
 from collections import defaultdict
 import os
@@ -146,6 +147,25 @@ class BpmnModel:
         elif isinstance(element, CallActivity):
             print(f"      Called element: {details['called_element']}")
             print(f"      Deployment mode: {details['deployment']}")
+        
+        # Show data associations for tasks
+        if isinstance(element, Task):
+            if details.get('data_input_associations'):
+                print(f"      Data inputs: {[assoc['source_ref'] for assoc in details['data_input_associations'] if assoc['source_ref']]}")
+            if details.get('data_output_associations'):
+                print(f"      Data outputs: {[assoc['target_ref'] for assoc in details['data_output_associations'] if assoc['target_ref']]}")
+        
+        # Show data object information
+        if isinstance(element, DataObjectReference):
+            print(f"      Data object ref: {details['data_object_ref']}")
+            if details['data_state']:
+                print(f"      Data state: {details['data_state']}")
+        
+        elif isinstance(element, DataObject):
+            if details['item_subject_ref']:
+                print(f"      Item subject ref: {details['item_subject_ref']}")
+            if details['is_collection']:
+                print(f"      Is collection: {details['is_collection']}")
 
     def export_parsed_data(self, filename=None, output_dir=None):
         if not filename:
@@ -236,3 +256,60 @@ class BpmnModel:
                 }
             }
         } 
+
+    def generate_task_data_info(self):
+        task_data_info = {}
+        tasks = self.get_elements_by_type("Task")
+        
+        for task in tasks:
+            task_info = {
+                "taskId": task._id,
+                "taskName": task.name,
+                "taskData": {
+                    "inputVariables": [],
+                    "outputVariables": []
+                }
+            }
+            
+            
+            for input_assoc in task.data_input_associations:
+                if input_assoc.source_ref:
+                    data_obj_ref = self.get_element_by_id(input_assoc.source_ref)
+                    if data_obj_ref:
+                        input_var = {
+                            "name": data_obj_ref.name or input_assoc.source_ref,
+                            "type": "object",
+                            "description": f": {data_obj_ref.name or input_assoc.source_ref}"
+                        }
+                        task_info["taskData"]["inputVariables"].append(input_var)
+            
+            for output_assoc in task.data_output_associations:
+                if output_assoc.target_ref:
+                    data_obj_ref = self.get_element_by_id(output_assoc.target_ref)
+                    if data_obj_ref:
+                        output_var = {
+                            "name": data_obj_ref.name or output_assoc.target_ref,
+                            "type": "object",
+                            "description": f" {data_obj_ref.name or output_assoc.target_ref}"
+                        }
+                        task_info["taskData"]["outputVariables"].append(output_var)
+ 
+            if task_info["taskData"]["inputVariables"] or task_info["taskData"]["outputVariables"]:
+                task_data_info[task._id] = task_info
+        
+        return task_data_info
+
+    def export_task_data_info(self, filename=None, output_dir=None):
+        if not filename:
+            clean_path = self.model_path.replace('.bpmn', '_task_data.json').replace('/', '_').replace('\\', '_')
+            filename = f"task_data_{clean_path}"
+        
+        if output_dir:
+            filename = os.path.join(output_dir, os.path.basename(filename))
+        
+        task_data_info = self.generate_task_data_info()
+        
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(task_data_info, f, indent=2, ensure_ascii=False)
+
+        return filename 

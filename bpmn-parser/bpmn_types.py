@@ -104,11 +104,35 @@ class SequenceFlow(BpmnObject):
 
 @bpmn_tag("bpmn:task")
 class Task(BpmnObject):
+    def __init__(self):
+        self.data_input_associations = []
+        self.data_output_associations = []
+
     def parse(self, element):
         super(Task, self).parse(element)
+        
+        # Parse data input associations
+        for dia in element.findall("bpmn:dataInputAssociation", NS):
+            data_input_assoc = DataInputAssociation()
+            data_input_assoc.parse(dia)
+            self.data_input_associations.append(data_input_assoc)
+        
+        # Parse data output associations
+        for doa in element.findall("bpmn:dataOutputAssociation", NS):
+            data_output_assoc = DataOutputAssociation()
+            data_output_assoc.parse(doa)
+            self.data_output_associations.append(data_output_assoc)
 
     def get_info(self):
         return {"type": self.tag}
+
+    def to_detailed_dict(self):
+        result = super().to_detailed_dict()
+        result.update({
+            "data_input_associations": [assoc.to_detailed_dict() for assoc in self.data_input_associations],
+            "data_output_associations": [assoc.to_detailed_dict() for assoc in self.data_output_associations],
+        })
+        return result
 
 
 @bpmn_tag("bpmn:manualTask")
@@ -119,6 +143,7 @@ class ManualTask(Task):
 @bpmn_tag("bpmn:userTask")
 class UserTask(Task):
     def __init__(self):
+        super(UserTask, self).__init__()
         self.form_fields = {}
         self.documentation = ""
 
@@ -175,6 +200,7 @@ class UserTask(Task):
 @bpmn_tag("bpmn:serviceTask")
 class ServiceTask(Task):
     def __init__(self):
+        super(ServiceTask, self).__init__()
         self.properties_fields = {}
         self.input_variables = {}
         self.output_variables = {}
@@ -342,5 +368,122 @@ class ExclusiveGateway(Gateway):
         result = super().to_detailed_dict()
         result.update({
             "default": self.default,
+        })
+        return result 
+
+
+@bpmn_tag("bpmn:dataObject")
+class DataObject(BpmnObject):
+    def __init__(self):
+        self.item_subject_ref = None
+        self.is_collection = False
+
+    def parse(self, element):
+        super(DataObject, self).parse(element)
+        if "itemSubjectRef" in element.attrib:
+            self.item_subject_ref = element.attrib["itemSubjectRef"]
+        if "isCollection" in element.attrib:
+            self.is_collection = element.attrib["isCollection"].lower() == "true"
+
+    def to_detailed_dict(self):
+        result = super().to_detailed_dict()
+        result.update({
+            "item_subject_ref": self.item_subject_ref,
+            "is_collection": self.is_collection,
+        })
+        return result
+
+
+@bpmn_tag("bpmn:dataObjectReference")
+class DataObjectReference(BpmnObject):
+    def __init__(self):
+        self.data_object_ref = None
+        self.data_state = None
+
+    def parse(self, element):
+        super(DataObjectReference, self).parse(element)
+        if "dataObjectRef" in element.attrib:
+            self.data_object_ref = element.attrib["dataObjectRef"]
+        
+        # Parse data state if exists
+        data_state_elem = element.find("bpmn:dataState", NS)
+        if data_state_elem is not None:
+            self.data_state = data_state_elem.attrib.get("name")
+
+    def to_detailed_dict(self):
+        result = super().to_detailed_dict()
+        result.update({
+            "data_object_ref": self.data_object_ref,
+            "data_state": self.data_state,
+        })
+        return result
+
+
+@bpmn_tag("bpmn:dataInputAssociation")
+class DataInputAssociation(BpmnObject):
+    def __init__(self):
+        self.source_ref = None
+        self.target_ref = None
+        self.transformation = None
+
+    def parse(self, element):
+        super(DataInputAssociation, self).parse(element)
+        
+        # Parse source reference
+        source_elem = element.find("bpmn:sourceRef", NS)
+        if source_elem is not None:
+            self.source_ref = source_elem.text
+        
+        # Parse target reference
+        target_elem = element.find("bpmn:targetRef", NS)
+        if target_elem is not None:
+            self.target_ref = target_elem.text
+        
+        # Parse transformation if exists
+        transform_elem = element.find("bpmn:transformation", NS)
+        if transform_elem is not None:
+            self.transformation = transform_elem.text
+
+    def to_detailed_dict(self):
+        result = super().to_detailed_dict()
+        result.update({
+            "source_ref": self.source_ref,
+            "target_ref": self.target_ref,
+            "transformation": self.transformation,
+        })
+        return result
+
+
+@bpmn_tag("bpmn:dataOutputAssociation")
+class DataOutputAssociation(BpmnObject):
+    def __init__(self):
+        self.source_ref = None
+        self.target_ref = None
+        self.transformation = None
+
+    def parse(self, element):
+        super(DataOutputAssociation, self).parse(element)
+        
+        # Parse source reference
+        source_elem = element.find("bpmn:sourceRef", NS)
+        if source_elem is not None:
+            self.source_ref = source_elem.text
+        
+        # Parse target reference
+        target_elem = element.find("bpmn:targetRef", NS)
+        if target_elem is not None:
+            self.target_ref = target_elem.text
+        
+        # Parse transformation if exists
+        transform_elem = element.find("bpmn:transformation", NS)
+        if transform_elem is not None:
+            self.transformation = transform_elem.text
+
+    def to_detailed_dict(self):
+        result = super().to_detailed_dict()
+        result.update({
+            "source_ref": self.source_ref,
+            "target_ref": self.target_ref,
+            "transformation": self.transformation,
         })
         return result 
