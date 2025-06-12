@@ -1,0 +1,245 @@
+{
+  "Summary": {
+    "Parsing time": "2025-06-10 14:57:11",
+    "Total files": 68,
+    "Successfully parsed": 41,
+    "Failed files": 27,
+    "Success rate": "60.3%"
+  },
+  "Success files list": [
+    {
+      "Index": 1,
+      "BPMN file": "01_model.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_01_model.json"
+    },
+    {
+      "Index": 2,
+      "BPMN file": "03.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_03.json"
+    },
+    {
+      "Index": 3,
+      "BPMN file": "04.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_04.json"
+    },
+    {
+      "Index": 4,
+      "BPMN file": "05.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_05.json"
+    },
+    {
+      "Index": 5,
+      "BPMN file": "06.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_06.json"
+    },
+    {
+      "Index": 6,
+      "BPMN file": "08.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_08.json"
+    },
+    {
+      "Index": 7,
+      "BPMN file": "09.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_09.json"
+    },
+    {
+      "Index": 8,
+      "BPMN file": "10.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_10.json"
+    },
+    {
+      "Index": 9,
+      "BPMN file": "11.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_11.json"
+    },
+    {
+      "Index": 10,
+      "BPMN file": "12.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_12.json"
+    },
+    {
+      "Index": 11,
+      "BPMN file": "14.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_14.json"
+    },
+    {
+      "Index": 12,
+      "BPMN file": "18.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_18.json"
+    },
+    {
+      "Index": 13,
+      "BPMN file": "19.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_19.json"
+    },
+    {
+      "Index": 14,
+      "BPMN file": "20.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_20.json"
+    },
+    {
+      "Index": 15,
+      "BPMN file": "21.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_21.json"
+    },
+    {
+      "Index": 16,
+      "BPMN file": "23.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_23.json"
+    },
+    {
+      "Index": 17,
+      "BPMN file": "27.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_27.json"
+    },
+    {
+      "Index": 18,
+      "BPMN file": "29.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_29.json"
+    },
+    {
+      "Index": 19,
+      "BPMN file": "31.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_31.json"
+    },
+    {
+      "Index": 20,
+      "BPMN file": "32.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_32.json"
+    },
+    {
+      "Index": 21,
+      "BPMN file": "33.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_33.json"
+    },
+    {
+      "Index": 22,
+      "BPMN file": "37.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_37.json"
+    },
+    {
+      "Index": 23,
+      "BPMN file": "38.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_38.json"
+    },
+    {
+      "Index": 24,
+      "BPMN file": "39.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_39.json"
+    },
+    {
+      "Index": 25,
+      "BPMN file": "41.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_41.json"
+    },
+    {
+      "Index": 26,
+      "BPMN file": "44.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_44.json"
+    },
+    {
+      "Index": 27,
+      "BPMN file": "47.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_47.json"
+    },
+    {
+      "Index": 28,
+      "BPMN file": "48.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_48.json"
+    },
+    {
+      "Index": 29,
+      "BPMN file": "49.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_49.json"
+    },
+    {
+      "Index": 30,
+      "BPMN file": "50.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_50.json"
+    },
+    {
+      "Index": 31,
+      "BPMN file": "51.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_51.json"
+    },
+    {
+      "Index": 32,
+      "BPMN file": "52.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_52.json"
+    },
+    {
+      "Index": 33,
+      "BPMN file": "53.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_53.json"
+    },
+    {
+      "Index": 34,
+      "BPMN file": "54.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_54.json"
+    },
+    {
+      "Index": 35,
+      "BPMN file": "55.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_55.json"
+    },
+    {
+      "Index": 36,
+      "BPMN file": "58.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_58.json"
+    },
+    {
+      "Index": 37,
+      "BPMN file": "60.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_60.json"
+    },
+    {
+      "Index": 38,
+      "BPMN file": "62.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_62.json"
+    },
+    {
+      "Index": 39,
+      "BPMN file": "63.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_63.json"
+    },
+    {
+      "Index": 40,
+      "BPMN file": "67.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_67.json"
+    },
+    {
+      "Index": 41,
+      "BPMN file": "68.bpmn",
+      "JSON文件": "parsed_results\\batch_20250610_145711\\parsed_models_68.json"
+    }
+  ],
+  "Failed files list": [
+    "02.bpmn",
+    "07.bpmn",
+    "13.bpmn",
+    "15.bpmn",
+    "16.bpmn",
+    "17.bpmn",
+    "22.bpmn",
+    "24.bpmn",
+    "25.bpmn",
+    "26.bpmn",
+    "28.bpmn",
+    "30.bpmn",
+    "34.bpmn",
+    "35.bpmn",
+    "36.bpmn",
+    "40.bpmn",
+    "42.bpmn",
+    "43.bpmn",
+    "45.bpmn",
+    "46.bpmn",
+    "56.bpmn",
+    "57.bpmn",
+    "59.bpmn",
+    "61.bpmn",
+    "64.bpmn",
+    "65.bpmn",
+    "66.bpmn"
+  ]
+}

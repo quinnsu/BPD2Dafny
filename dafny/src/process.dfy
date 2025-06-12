@@ -7,12 +7,20 @@ module ProcessDefinition {
   import opened Optional
 
   /**
+    * Task data configuration 
+    */
+  datatype TaskData = TaskDataConfig(
+    inputVariables: seq<string>,   
+    outputVariables: seq<string>   
+  )
+
+  /**
     * Node Type
     */
   datatype NodeType =
     | StartEvent
     | EndEvent
-    | Task(taskType: TaskType)
+    | Task(taskType: TaskType, data: Option<TaskData>)  
     | Gateway(gatewayType: GatewayType)
     | IntermediateEvent(eventType: EventType)
 
@@ -22,8 +30,7 @@ module ProcessDefinition {
   datatype TaskType =
     | UserTask
     | ServiceTask
-    | ScriptTask
-    | BusinessRuleTask
+    | ManualTask
 
 
   datatype GatewayType =
@@ -45,7 +52,8 @@ module ProcessDefinition {
     name: string,
     nodeType: NodeType,
     incoming: set<string>,
-    outgoing: set<string>
+    outgoing: set<string>,
+    defaultFlow: Option<string>  
   )
 
 
@@ -53,7 +61,7 @@ module ProcessDefinition {
     id: string,
     sourceRef: string,
     targetRef: string,
-    condition: Option<string>
+    condition: Option<string> 
   )
 
 

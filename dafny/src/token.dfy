@@ -577,7 +577,7 @@ module Token {
     set tokenId | tokenId in tc.tokens && tc.tokens[tokenId].status == Active
   }
 
-
+ 
   /**
     * Reactivate a suspended token  
     */

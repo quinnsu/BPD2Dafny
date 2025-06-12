@@ -1,0 +1,255 @@
+{
+  "Index information": {
+    "Creation time": "2025-06-10 14:57:11",
+    "Total files": 41,
+    "Output directory": "parsed_results\\batch_20250610_145711"
+  },
+  "File index": [
+    {
+      "id": 1,
+      "bpmn_file": "01_model.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_01_model.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_01_model.json"
+    },
+    {
+      "id": 2,
+      "bpmn_file": "03.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_03.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_03.json"
+    },
+    {
+      "id": 3,
+      "bpmn_file": "04.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_04.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_04.json"
+    },
+    {
+      "id": 4,
+      "bpmn_file": "05.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_05.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_05.json"
+    },
+    {
+      "id": 5,
+      "bpmn_file": "06.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_06.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_06.json"
+    },
+    {
+      "id": 6,
+      "bpmn_file": "08.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_08.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_08.json"
+    },
+    {
+      "id": 7,
+      "bpmn_file": "09.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_09.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_09.json"
+    },
+    {
+      "id": 8,
+      "bpmn_file": "10.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_10.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_10.json"
+    },
+    {
+      "id": 9,
+      "bpmn_file": "11.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_11.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_11.json"
+    },
+    {
+      "id": 10,
+      "bpmn_file": "12.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_12.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_12.json"
+    },
+    {
+      "id": 11,
+      "bpmn_file": "14.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_14.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_14.json"
+    },
+    {
+      "id": 12,
+      "bpmn_file": "18.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_18.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_18.json"
+    },
+    {
+      "id": 13,
+      "bpmn_file": "19.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_19.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_19.json"
+    },
+    {
+      "id": 14,
+      "bpmn_file": "20.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_20.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_20.json"
+    },
+    {
+      "id": 15,
+      "bpmn_file": "21.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_21.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_21.json"
+    },
+    {
+      "id": 16,
+      "bpmn_file": "23.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_23.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_23.json"
+    },
+    {
+      "id": 17,
+      "bpmn_file": "27.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_27.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_27.json"
+    },
+    {
+      "id": 18,
+      "bpmn_file": "29.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_29.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_29.json"
+    },
+    {
+      "id": 19,
+      "bpmn_file": "31.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_31.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_31.json"
+    },
+    {
+      "id": 20,
+      "bpmn_file": "32.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_32.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_32.json"
+    },
+    {
+      "id": 21,
+      "bpmn_file": "33.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_33.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_33.json"
+    },
+    {
+      "id": 22,
+      "bpmn_file": "37.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_37.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_37.json"
+    },
+    {
+      "id": 23,
+      "bpmn_file": "38.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_38.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_38.json"
+    },
+    {
+      "id": 24,
+      "bpmn_file": "39.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_39.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_39.json"
+    },
+    {
+      "id": 25,
+      "bpmn_file": "41.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_41.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_41.json"
+    },
+    {
+      "id": 26,
+      "bpmn_file": "44.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_44.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_44.json"
+    },
+    {
+      "id": 27,
+      "bpmn_file": "47.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_47.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_47.json"
+    },
+    {
+      "id": 28,
+      "bpmn_file": "48.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_48.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_48.json"
+    },
+    {
+      "id": 29,
+      "bpmn_file": "49.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_49.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_49.json"
+    },
+    {
+      "id": 30,
+      "bpmn_file": "50.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_50.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_50.json"
+    },
+    {
+      "id": 31,
+      "bpmn_file": "51.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_51.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_51.json"
+    },
+    {
+      "id": 32,
+      "bpmn_file": "52.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_52.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_52.json"
+    },
+    {
+      "id": 33,
+      "bpmn_file": "53.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_53.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_53.json"
+    },
+    {
+      "id": 34,
+      "bpmn_file": "54.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_54.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_54.json"
+    },
+    {
+      "id": 35,
+      "bpmn_file": "55.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_55.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_55.json"
+    },
+    {
+      "id": 36,
+      "bpmn_file": "58.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_58.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_58.json"
+    },
+    {
+      "id": 37,
+      "bpmn_file": "60.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_60.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_60.json"
+    },
+    {
+      "id": 38,
+      "bpmn_file": "62.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_62.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_62.json"
+    },
+    {
+      "id": 39,
+      "bpmn_file": "63.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_63.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_63.json"
+    },
+    {
+      "id": 40,
+      "bpmn_file": "67.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_67.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_67.json"
+    },
+    {
+      "id": 41,
+      "bpmn_file": "68.bpmn",
+      "json_file": "parsed_results\\batch_20250610_145711\\parsed_models_68.json",
+      "json_path": "parsed_results\\batch_20250610_145711\\parsed_models_68.json"
+    }
+  ]
+}

@@ -1,0 +1,209 @@
+{
+  "model_path": "models\\58.bpmn",
+  "main_process": {
+    "name": "Dispatch of Goods",
+    "id": "sid-F9492008-A697-4D2B-8B8C-0D226CFDC5CC"
+  },
+  "elements": {
+    "sid-A59E6545-8D90-431A-A6CB-38E019D6E6A2": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "sid-A59E6545-8D90-431A-A6CB-38E019D6E6A2",
+      "name": "",
+      "condition": null,
+      "source": "sid-D8C487C6-57AD-40E4-A861-E1AADE5F248C",
+      "target": "sid-47949320-D8BD-4B29-BC28-F64F131C00E3"
+    },
+    "sid-4E7E9FF2-713C-4241-B66B-F3ACCED152F1": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "sid-4E7E9FF2-713C-4241-B66B-F3ACCED152F1",
+      "name": "large",
+      "condition": null,
+      "source": "sid-47949320-D8BD-4B29-BC28-F64F131C00E3",
+      "target": "sid-24CBFD20-9DB4-4458-86C3-877F734C4258"
+    },
+    "sid-3E06A984-92F6-4235-8695-37FC1F8668C1": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "sid-3E06A984-92F6-4235-8695-37FC1F8668C1",
+      "name": "Small",
+      "condition": null,
+      "source": "sid-47949320-D8BD-4B29-BC28-F64F131C00E3",
+      "target": "sid-3A59E271-2F1D-4578-B3DA-D602ECAA0BFC"
+    },
+    "sid-F3103BD1-7054-4CED-BC05-DDF4A7FD86E8": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "sid-F3103BD1-7054-4CED-BC05-DDF4A7FD86E8",
+      "name": "",
+      "condition": null,
+      "source": "sid-24CBFD20-9DB4-4458-86C3-877F734C4258",
+      "target": "sid-263E3194-4872-418C-BE9E-400609E718E1"
+    },
+    "sid-D5D21267-EEF5-43A8-A8E9-146B254AE782": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "sid-D5D21267-EEF5-43A8-A8E9-146B254AE782",
+      "name": "",
+      "condition": null,
+      "source": "sid-3C8A8B32-06B3-4C35-822D-2168267EA5CD",
+      "target": "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3"
+    },
+    "sid-B17626DA-B035-4327-A195-E9199C7DEE97": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "sid-B17626DA-B035-4327-A195-E9199C7DEE97",
+      "name": "",
+      "condition": null,
+      "source": "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3",
+      "target": "sid-D8C487C6-57AD-40E4-A861-E1AADE5F248C"
+    },
+    "sid-12D12496-B28C-49A4-BE2C-FE839372F9AA": {
+      "class": "SequenceFlow",
+      "tag": "bpmn:sequenceFlow",
+      "_id": "sid-12D12496-B28C-49A4-BE2C-FE839372F9AA",
+      "name": "",
+      "condition": null,
+      "source": "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3",
+      "target": "sid-91608739-15DA-48A6-9DCF-9D838D2EE38C"
+    },
+    "sid-D8C487C6-57AD-40E4-A861-E1AADE5F248C": {
+      "class": "Task",
+      "tag": "bpmn:task",
+      "_id": "sid-D8C487C6-57AD-40E4-A861-E1AADE5F248C",
+      "name": "clarify shipment "
+    },
+    "sid-3A59E271-2F1D-4578-B3DA-D602ECAA0BFC": {
+      "class": "Task",
+      "tag": "bpmn:task",
+      "_id": "sid-3A59E271-2F1D-4578-B3DA-D602ECAA0BFC",
+      "name": "write label"
+    },
+    "sid-24CBFD20-9DB4-4458-86C3-877F734C4258": {
+      "class": "Task",
+      "tag": "bpmn:task",
+      "_id": "sid-24CBFD20-9DB4-4458-86C3-877F734C4258",
+      "name": "invite logistic company "
+    },
+    "sid-263E3194-4872-418C-BE9E-400609E718E1": {
+      "class": "Task",
+      "tag": "bpmn:task",
+      "_id": "sid-263E3194-4872-418C-BE9E-400609E718E1",
+      "name": "company selected"
+    },
+    "sid-91608739-15DA-48A6-9DCF-9D838D2EE38C": {
+      "class": "Task",
+      "tag": "bpmn:task",
+      "_id": "sid-91608739-15DA-48A6-9DCF-9D838D2EE38C",
+      "name": "goods packaged"
+    },
+    "sid-3C8A8B32-06B3-4C35-822D-2168267EA5CD": {
+      "class": "StartEvent",
+      "tag": "bpmn:startEvent",
+      "_id": "sid-3C8A8B32-06B3-4C35-822D-2168267EA5CD",
+      "name": "goods must\n be shipped"
+    },
+    "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3": {
+      "class": "ParallelGateway",
+      "tag": "bpmn:parallelGateway",
+      "_id": "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3",
+      "name": "",
+      "incoming": 1,
+      "outgoing": 2
+    },
+    "sid-47949320-D8BD-4B29-BC28-F64F131C00E3": {
+      "class": "ExclusiveGateway",
+      "tag": "bpmn:exclusiveGateway",
+      "_id": "sid-47949320-D8BD-4B29-BC28-F64F131C00E3",
+      "name": "amount desired?",
+      "default": null,
+      "incoming": 1,
+      "outgoing": 2
+    }
+  },
+  "flow": {
+    "sid-D8C487C6-57AD-40E4-A861-E1AADE5F248C": [
+      {
+        "sequence_id": "sid-A59E6545-8D90-431A-A6CB-38E019D6E6A2",
+        "target": "sid-47949320-D8BD-4B29-BC28-F64F131C00E3",
+        "condition": null,
+        "name": ""
+      }
+    ],
+    "sid-47949320-D8BD-4B29-BC28-F64F131C00E3": [
+      {
+        "sequence_id": "sid-4E7E9FF2-713C-4241-B66B-F3ACCED152F1",
+        "target": "sid-24CBFD20-9DB4-4458-86C3-877F734C4258",
+        "condition": null,
+        "name": "large"
+      },
+      {
+        "sequence_id": "sid-3E06A984-92F6-4235-8695-37FC1F8668C1",
+        "target": "sid-3A59E271-2F1D-4578-B3DA-D602ECAA0BFC",
+        "condition": null,
+        "name": "Small"
+      }
+    ],
+    "sid-24CBFD20-9DB4-4458-86C3-877F734C4258": [
+      {
+        "sequence_id": "sid-F3103BD1-7054-4CED-BC05-DDF4A7FD86E8",
+        "target": "sid-263E3194-4872-418C-BE9E-400609E718E1",
+        "condition": null,
+        "name": ""
+      }
+    ],
+    "sid-3C8A8B32-06B3-4C35-822D-2168267EA5CD": [
+      {
+        "sequence_id": "sid-D5D21267-EEF5-43A8-A8E9-146B254AE782",
+        "target": "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3",
+        "condition": null,
+        "name": ""
+      }
+    ],
+    "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3": [
+      {
+        "sequence_id": "sid-B17626DA-B035-4327-A195-E9199C7DEE97",
+        "target": "sid-D8C487C6-57AD-40E4-A861-E1AADE5F248C",
+        "condition": null,
+        "name": ""
+      },
+      {
+        "sequence_id": "sid-12D12496-B28C-49A4-BE2C-FE839372F9AA",
+        "target": "sid-91608739-15DA-48A6-9DCF-9D838D2EE38C",
+        "condition": null,
+        "name": ""
+      }
+    ]
+  },
+  "subprocesses": {},
+  "statistics": {
+    "total_elements": 15,
+    "elements_by_type": {
+      "SequenceFlow": 7,
+      "Task": 5,
+      "StartEvent": 1,
+      "ParallelGateway": 1,
+      "ExclusiveGateway": 1
+    }
+  },
+  "process_elements": {
+    "sid-F9492008-A697-4D2B-8B8C-0D226CFDC5CC": [
+      "sid-A59E6545-8D90-431A-A6CB-38E019D6E6A2",
+      "sid-4E7E9FF2-713C-4241-B66B-F3ACCED152F1",
+      "sid-3E06A984-92F6-4235-8695-37FC1F8668C1",
+      "sid-F3103BD1-7054-4CED-BC05-DDF4A7FD86E8",
+      "sid-D5D21267-EEF5-43A8-A8E9-146B254AE782",
+      "sid-B17626DA-B035-4327-A195-E9199C7DEE97",
+      "sid-12D12496-B28C-49A4-BE2C-FE839372F9AA",
+      "sid-D8C487C6-57AD-40E4-A861-E1AADE5F248C",
+      "sid-3A59E271-2F1D-4578-B3DA-D602ECAA0BFC",
+      "sid-24CBFD20-9DB4-4458-86C3-877F734C4258",
+      "sid-263E3194-4872-418C-BE9E-400609E718E1",
+      "sid-91608739-15DA-48A6-9DCF-9D838D2EE38C",
+      "sid-3C8A8B32-06B3-4C35-822D-2168267EA5CD",
+      "sid-13CAD63D-ACE6-4D6D-AA3E-BB6D743E38E3",
+      "sid-47949320-D8BD-4B29-BC28-F64F131C00E3"
+    ]
+  }
+}

@@ -60,9 +60,12 @@ module Scheduling {
      */
     predicate NextToken(s: BPMNState.State, tokenId: Token.TokenId, s': BPMNState.State)
     {
+    
+        // The new state is the result of executing the token step
         s.Running? &&
         ValidState(s) &&
         tokenId in GetActiveTokens(s.process.tokenCollection) &&
+        ValidProcessDefinition(s.process.processDefinition) &&
         s.process.tokenCollection.tokens[tokenId].status == Active &&
         // The new state is the result of executing the token step
         s' == ExecuteTokenStep(s, tokenId)

@@ -1261,6 +1261,47 @@ let ProcessDefinition = (function() {
   let $module = {};
 
 
+  $module.TaskData = class TaskData {
+    constructor(tag) {
+      this.$tag = tag;
+    }
+    static create_TaskDataConfig(inputVariables, outputVariables) {
+      let $dt = new TaskData(0);
+      $dt.inputVariables = inputVariables;
+      $dt.outputVariables = outputVariables;
+      return $dt;
+    }
+    get is_TaskDataConfig() { return this.$tag === 0; }
+    get dtor_inputVariables() { return this.inputVariables; }
+    get dtor_outputVariables() { return this.outputVariables; }
+    toString() {
+      if (this.$tag === 0) {
+        return "ProcessDefinition.TaskData.TaskDataConfig" + "(" + _dafny.toString(this.inputVariables) + ", " + _dafny.toString(this.outputVariables) + ")";
+      } else  {
+        return "<unexpected>";
+      }
+    }
+    equals(other) {
+      if (this === other) {
+        return true;
+      } else if (this.$tag === 0) {
+        return other.$tag === 0 && _dafny.areEqual(this.inputVariables, other.inputVariables) && _dafny.areEqual(this.outputVariables, other.outputVariables);
+      } else  {
+        return false; // unexpected
+      }
+    }
+    static Default() {
+      return ProcessDefinition.TaskData.create_TaskDataConfig(_dafny.Seq.of(), _dafny.Seq.of());
+    }
+    static Rtd() {
+      return class {
+        static get Default() {
+          return TaskData.Default();
+        }
+      };
+    }
+  }
+
   $module.NodeType = class NodeType {
     constructor(tag) {
       this.$tag = tag;
@@ -1273,9 +1314,10 @@ let ProcessDefinition = (function() {
       let $dt = new NodeType(1);
       return $dt;
     }
-    static create_Task(taskType) {
+    static create_Task(taskType, data) {
       let $dt = new NodeType(2);
       $dt.taskType = taskType;
+      $dt.data = data;
       return $dt;
     }
     static create_Gateway(gatewayType) {
@@ -1294,6 +1336,7 @@ let ProcessDefinition = (function() {
     get is_Gateway() { return this.$tag === 3; }
     get is_IntermediateEvent() { return this.$tag === 4; }
     get dtor_taskType() { return this.taskType; }
+    get dtor_data() { return this.data; }
     get dtor_gatewayType() { return this.gatewayType; }
     get dtor_eventType() { return this.eventType; }
     toString() {
@@ -1302,7 +1345,7 @@ let ProcessDefinition = (function() {
       } else if (this.$tag === 1) {
         return "ProcessDefinition.NodeType.EndEvent";
       } else if (this.$tag === 2) {
-        return "ProcessDefinition.NodeType.Task" + "(" + _dafny.toString(this.taskType) + ")";
+        return "ProcessDefinition.NodeType.Task" + "(" + _dafny.toString(this.taskType) + ", " + _dafny.toString(this.data) + ")";
       } else if (this.$tag === 3) {
         return "ProcessDefinition.NodeType.Gateway" + "(" + _dafny.toString(this.gatewayType) + ")";
       } else if (this.$tag === 4) {
@@ -1319,7 +1362,7 @@ let ProcessDefinition = (function() {
       } else if (this.$tag === 1) {
         return other.$tag === 1;
       } else if (this.$tag === 2) {
-        return other.$tag === 2 && _dafny.areEqual(this.taskType, other.taskType);
+        return other.$tag === 2 && _dafny.areEqual(this.taskType, other.taskType) && _dafny.areEqual(this.data, other.data);
       } else if (this.$tag === 3) {
         return other.$tag === 3 && _dafny.areEqual(this.gatewayType, other.gatewayType);
       } else if (this.$tag === 4) {
@@ -1352,26 +1395,20 @@ let ProcessDefinition = (function() {
       let $dt = new TaskType(1);
       return $dt;
     }
-    static create_ScriptTask() {
+    static create_ManualTask() {
       let $dt = new TaskType(2);
-      return $dt;
-    }
-    static create_BusinessRuleTask() {
-      let $dt = new TaskType(3);
       return $dt;
     }
     get is_UserTask() { return this.$tag === 0; }
     get is_ServiceTask() { return this.$tag === 1; }
-    get is_ScriptTask() { return this.$tag === 2; }
-    get is_BusinessRuleTask() { return this.$tag === 3; }
+    get is_ManualTask() { return this.$tag === 2; }
     static get AllSingletonConstructors() {
       return this.AllSingletonConstructors_();
     }
     static *AllSingletonConstructors_() {
       yield TaskType.create_UserTask();
       yield TaskType.create_ServiceTask();
-      yield TaskType.create_ScriptTask();
-      yield TaskType.create_BusinessRuleTask();
+      yield TaskType.create_ManualTask();
     }
     toString() {
       if (this.$tag === 0) {
@@ -1379,9 +1416,7 @@ let ProcessDefinition = (function() {
       } else if (this.$tag === 1) {
         return "ProcessDefinition.TaskType.ServiceTask";
       } else if (this.$tag === 2) {
-        return "ProcessDefinition.TaskType.ScriptTask";
-      } else if (this.$tag === 3) {
-        return "ProcessDefinition.TaskType.BusinessRuleTask";
+        return "ProcessDefinition.TaskType.ManualTask";
       } else  {
         return "<unexpected>";
       }
@@ -1395,8 +1430,6 @@ let ProcessDefinition = (function() {
         return other.$tag === 1;
       } else if (this.$tag === 2) {
         return other.$tag === 2;
-      } else if (this.$tag === 3) {
-        return other.$tag === 3;
       } else  {
         return false; // unexpected
       }
@@ -1563,13 +1596,14 @@ let ProcessDefinition = (function() {
     constructor(tag) {
       this.$tag = tag;
     }
-    static create_ProcessNode(id, name, nodeType, incoming, outgoing) {
+    static create_ProcessNode(id, name, nodeType, incoming, outgoing, defaultFlow) {
       let $dt = new Node(0);
       $dt.id = id;
       $dt.name = name;
       $dt.nodeType = nodeType;
       $dt.incoming = incoming;
       $dt.outgoing = outgoing;
+      $dt.defaultFlow = defaultFlow;
       return $dt;
     }
     get is_ProcessNode() { return this.$tag === 0; }
@@ -1578,9 +1612,10 @@ let ProcessDefinition = (function() {
     get dtor_nodeType() { return this.nodeType; }
     get dtor_incoming() { return this.incoming; }
     get dtor_outgoing() { return this.outgoing; }
+    get dtor_defaultFlow() { return this.defaultFlow; }
     toString() {
       if (this.$tag === 0) {
-        return "ProcessDefinition.Node.ProcessNode" + "(" + this.id.toVerbatimString(true) + ", " + this.name.toVerbatimString(true) + ", " + _dafny.toString(this.nodeType) + ", " + _dafny.toString(this.incoming) + ", " + _dafny.toString(this.outgoing) + ")";
+        return "ProcessDefinition.Node.ProcessNode" + "(" + this.id.toVerbatimString(true) + ", " + this.name.toVerbatimString(true) + ", " + _dafny.toString(this.nodeType) + ", " + _dafny.toString(this.incoming) + ", " + _dafny.toString(this.outgoing) + ", " + _dafny.toString(this.defaultFlow) + ")";
       } else  {
         return "<unexpected>";
       }
@@ -1589,13 +1624,13 @@ let ProcessDefinition = (function() {
       if (this === other) {
         return true;
       } else if (this.$tag === 0) {
-        return other.$tag === 0 && _dafny.areEqual(this.id, other.id) && _dafny.areEqual(this.name, other.name) && _dafny.areEqual(this.nodeType, other.nodeType) && _dafny.areEqual(this.incoming, other.incoming) && _dafny.areEqual(this.outgoing, other.outgoing);
+        return other.$tag === 0 && _dafny.areEqual(this.id, other.id) && _dafny.areEqual(this.name, other.name) && _dafny.areEqual(this.nodeType, other.nodeType) && _dafny.areEqual(this.incoming, other.incoming) && _dafny.areEqual(this.outgoing, other.outgoing) && _dafny.areEqual(this.defaultFlow, other.defaultFlow);
       } else  {
         return false; // unexpected
       }
     }
     static Default() {
-      return ProcessDefinition.Node.create_ProcessNode(_dafny.Seq.UnicodeFromString(""), _dafny.Seq.UnicodeFromString(""), ProcessDefinition.NodeType.Default(), _dafny.Set.Empty, _dafny.Set.Empty);
+      return ProcessDefinition.Node.create_ProcessNode(_dafny.Seq.UnicodeFromString(""), _dafny.Seq.UnicodeFromString(""), ProcessDefinition.NodeType.Default(), _dafny.Set.Empty, _dafny.Set.Empty, Optional.Option.Default());
     }
     static Rtd() {
       return class {
@@ -2396,9 +2431,9 @@ let Variables = (function() {
     };
     static GetVariable(vars, name) {
       if ((vars).contains(name)) {
-        return Optional.Option.create_Some((vars).get(name));
+        return _dafny.Option.create_Some((vars).get(name));
       } else {
-        return Optional.Option.create_None();
+        return _dafny.Option.create_None();
       }
     };
   };
@@ -2734,17 +2769,20 @@ let BPMNState = (function() {
       {
         if (_source0.is_Completed) {
           let _3_process = (_source0).process;
-          return ((!(Token.__default.HasActiveTokens((_3_process).dtor_tokenCollection))) && (Token.__default.ValidTokenCollection((_3_process).dtor_tokenCollection))) && (BPMNState.__default.ValidProcessState(_3_process));
+          return (((!(Token.__default.HasActiveTokens((_3_process).dtor_tokenCollection))) && (Token.__default.ValidTokenCollection((_3_process).dtor_tokenCollection))) && (BPMNState.__default.ValidProcessState(_3_process))) && (_dafny.Quantifier((Token.__default.GetActiveTokens((_3_process).dtor_tokenCollection)).Elements, true, function (_forall_var_0) {
+            let _4_tokenId = _forall_var_0;
+            return !((Token.__default.GetActiveTokens((_3_process).dtor_tokenCollection)).contains(_4_tokenId)) || ((((_3_process).dtor_processDefinition).dtor_endNodes).contains(((((_3_process).dtor_tokenCollection).dtor_tokens).get(_4_tokenId)).dtor_location));
+          }));
         }
       }
       {
         if (_source0.is_Terminated) {
-          let _4_process = (_source0).process;
-          return (Token.__default.ValidTokenCollection((_4_process).dtor_tokenCollection)) && (BPMNState.__default.ValidProcessState(_4_process));
+          let _5_process = (_source0).process;
+          return (Token.__default.ValidTokenCollection((_5_process).dtor_tokenCollection)) && (BPMNState.__default.ValidProcessState(_5_process));
         }
       }
       {
-        let _5_process = (_source0).process;
+        let _6_process = (_source0).process;
         return true;
       }
     };
@@ -2763,7 +2801,7 @@ let BPMNState = (function() {
     static ValidProcessDefinition(processDefinition) {
       let _pat_let_tv0 = processDefinition;
       let _pat_let_tv1 = processDefinition;
-      return (((((((_dafny.ZERO).isLessThan(new BigNumber(((processDefinition).dtor_startNodes).length))) && ((_dafny.ZERO).isLessThan(new BigNumber(((processDefinition).dtor_endNodes).length)))) && (_dafny.Quantifier(((processDefinition).dtor_startNodes).Elements, true, function (_forall_var_0) {
+      return ((((((((_dafny.ZERO).isLessThan(new BigNumber(((processDefinition).dtor_startNodes).length))) && ((_dafny.ZERO).isLessThan(new BigNumber(((processDefinition).dtor_endNodes).length)))) && (_dafny.Quantifier(((processDefinition).dtor_startNodes).Elements, true, function (_forall_var_0) {
         let _0_nodeId = _forall_var_0;
         return !(((processDefinition).dtor_startNodes).contains(_0_nodeId)) || (((processDefinition).dtor_nodes).contains(_0_nodeId));
       }))) && (_dafny.Quantifier(((processDefinition).dtor_endNodes).Elements, true, function (_forall_var_1) {
@@ -2788,6 +2826,13 @@ let BPMNState = (function() {
           let _7_flowId = _forall_var_6;
           return !(((((processDefinition).dtor_nodes).get(_6_nodeId)).dtor_incoming).contains(_7_flowId)) || (((processDefinition).dtor_flows).contains(_7_flowId));
         }));
+      }))) && (_dafny.Quantifier(((processDefinition).dtor_nodes).Keys.Elements, true, function (_forall_var_7) {
+        let _8_nodeId = _forall_var_7;
+        return !(((processDefinition).dtor_nodes).contains(_8_nodeId)) || (function (_pat_let38_0) {
+          return function (_9_node) {
+            return !(((_9_node).dtor_defaultFlow).is_Some) || (((_9_node).dtor_outgoing).contains(((_9_node).dtor_defaultFlow).Unwrap()));
+          }(_pat_let38_0);
+        }(((processDefinition).dtor_nodes).get(_8_nodeId)));
       }));
     };
     static CreateInitialState(processDefinition, initialVariables) {
@@ -2802,7 +2847,7 @@ let BPMNState = (function() {
       });
     };
     static CreateDummyProcessDef() {
-      return ProcessDefinition.ProcessDef.create_ProcessDefinition(_dafny.Seq.UnicodeFromString("dummy"), _dafny.Seq.UnicodeFromString("dummy"), _dafny.Map.Empty.slice().updateUnsafe(_dafny.Seq.UnicodeFromString("start"),ProcessDefinition.Node.create_ProcessNode(_dafny.Seq.UnicodeFromString("start"), _dafny.Seq.UnicodeFromString("start"), ProcessDefinition.NodeType.create_StartEvent(), _dafny.Set.fromElements(), _dafny.Set.fromElements())), _dafny.Map.Empty.slice(), _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("start")), _dafny.Set.fromElements());
+      return ProcessDefinition.ProcessDef.create_ProcessDefinition(_dafny.Seq.UnicodeFromString("dummy"), _dafny.Seq.UnicodeFromString("dummy"), _dafny.Map.Empty.slice().updateUnsafe(_dafny.Seq.UnicodeFromString("start"),ProcessDefinition.Node.create_ProcessNode(_dafny.Seq.UnicodeFromString("start"), _dafny.Seq.UnicodeFromString("start"), ProcessDefinition.NodeType.create_StartEvent(), _dafny.Set.fromElements(), _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow1")), Optional.Option.create_None())), _dafny.Map.Empty.slice(), _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("start")), _dafny.Set.fromElements());
     };
     static GetCurrentLocations(state) {
       return ExecutionContext.__default.GetCurrentNodes(((state).dtor_process).dtor_tokenCollection);
@@ -2843,6 +2888,206 @@ let BPMNState = (function() {
     static CreateRuntimeError(process, message) {
       return BPMNState.State.create_Error(process, BPMNState.ErrorCode.create_RuntimeError(message));
     };
+    static CreateDataConflictError(process, conflicts) {
+      return BPMNState.State.create_Error(process, BPMNState.ErrorCode.create_DataConflictError(conflicts));
+    };
+    static CreateDataConflict(variable, access1, access2, token1, token2) {
+      let _0_conflictType = (((_dafny.areEqual(access1, BPMNState.AccessType.create_Write())) && (_dafny.areEqual(access2, BPMNState.AccessType.create_Write()))) ? (BPMNState.ConflictType.create_WriteWriteConflict()) : (BPMNState.ConflictType.create_ReadWriteConflict()));
+      return BPMNState.DataConflict.create_Conflict(variable, _0_conflictType, token1, token2);
+    };
+    static HasConflict(access1, access2) {
+      return (_dafny.areEqual(access1, BPMNState.AccessType.create_Write())) || (_dafny.areEqual(access2, BPMNState.AccessType.create_Write()));
+    };
+    static AccessesConflict(access1, access2) {
+      return (_dafny.areEqual((access1).dtor_variable, (access2).dtor_variable)) && (BPMNState.__default.HasConflict((access1).dtor_accessType, (access2).dtor_accessType));
+    };
+    static IsSafe(state) {
+      return ((!(BPMNState.__default.DetectDeadlock(state))) && (!(BPMNState.__default.HasDataConflicts(state)))) && (!(BPMNState.__default.HasActivityConflicts(state)));
+    };
+    static DetectDeadlock(state) {
+      let _source0 = state;
+      {
+        if (_source0.is_Running) {
+          let _0_process = (_source0).process;
+          let _1_activeTokens = Token.__default.GetActiveTokens((_0_process).dtor_tokenCollection);
+          return ((_dafny.ZERO).isLessThan(new BigNumber((_1_activeTokens).length))) && (_dafny.Quantifier((_1_activeTokens).Elements, true, function (_forall_var_0) {
+            let _2_tokenId = _forall_var_0;
+            if (_System.nat._Is(_2_tokenId)) {
+              return !((_1_activeTokens).contains(_2_tokenId)) || (!(BPMNState.__default.CanExecuteTokenInState(state, _2_tokenId)));
+            } else {
+              return true;
+            }
+          }));
+        }
+      }
+      {
+        if (_source0.is_Completed) {
+          return false;
+        }
+      }
+      {
+        if (_source0.is_Terminated) {
+          return false;
+        }
+      }
+      {
+        if (_source0.is_Error) {
+          return false;
+        }
+      }
+      {
+        return false;
+      }
+    };
+    static CanExecuteTokenInState(state, tokenId) {
+      return ((_dafny.areEqual((((((state).dtor_process).dtor_tokenCollection).dtor_tokens).get(tokenId)).dtor_status, Token.TokenStatus.create_Active())) && (((((state).dtor_process).dtor_processDefinition).dtor_nodes).contains((((((state).dtor_process).dtor_tokenCollection).dtor_tokens).get(tokenId)).dtor_location))) && (BPMNState.__default.CanExecuteBasicNode(state, tokenId));
+    };
+    static CanExecuteBasicNode(state, tokenId) {
+      let _0_process = (state).dtor_process;
+      let _1_token = (((_0_process).dtor_tokenCollection).dtor_tokens).get(tokenId);
+      let _2_location = (_1_token).dtor_location;
+      let _3_node = (((_0_process).dtor_processDefinition).dtor_nodes).get(_2_location);
+      let _source0 = (_3_node).dtor_nodeType;
+      {
+        if (_source0.is_Gateway) {
+          let gatewayType0 = (_source0).gatewayType;
+          if (gatewayType0.is_ParallelGateway) {
+            if ((_dafny.ONE).isLessThan(new BigNumber(((_3_node).dtor_incoming).length))) {
+              let _4_tokensAtLocation = BPMNState.__default.GetActiveTokensAtLocation((_0_process).dtor_tokenCollection, _2_location);
+              return (new BigNumber((_4_tokensAtLocation).length)).isEqualTo(new BigNumber(((_3_node).dtor_incoming).length));
+            } else {
+              return true;
+            }
+          }
+        }
+      }
+      {
+        return true;
+      }
+    };
+    static HasDataConflicts(state) {
+      let _source0 = state;
+      {
+        if (_source0.is_Running) {
+          let _0_process = (_source0).process;
+          let _1_activeTokens = Token.__default.GetActiveTokens((_0_process).dtor_tokenCollection);
+          return _dafny.Quantifier((_1_activeTokens).Elements, false, function (_exists_var_0) {
+            let _2_token1 = _exists_var_0;
+            if (_System.nat._Is(_2_token1)) {
+              return _dafny.Quantifier((_1_activeTokens).Elements, false, function (_exists_var_1) {
+                let _3_token2 = _exists_var_1;
+                if (_System.nat._Is(_3_token2)) {
+                  return ((((((((_1_activeTokens).contains(_2_token1)) && ((_1_activeTokens).contains(_3_token2))) && (!(_2_token1).isEqualTo(_3_token2))) && ((((_0_process).dtor_tokenCollection).dtor_tokens).contains(_2_token1))) && ((((_0_process).dtor_tokenCollection).dtor_tokens).contains(_3_token2))) && ((((_0_process).dtor_processDefinition).dtor_nodes).contains(((((_0_process).dtor_tokenCollection).dtor_tokens).get(_2_token1)).dtor_location))) && ((((_0_process).dtor_processDefinition).dtor_nodes).contains(((((_0_process).dtor_tokenCollection).dtor_tokens).get(_3_token2)).dtor_location))) && (BPMNState.__default.HasDataConflictBetweenTokens(state, _2_token1, _3_token2));
+                } else {
+                  return false;
+                }
+              });
+            } else {
+              return false;
+            }
+          });
+        }
+      }
+      {
+        return false;
+      }
+    };
+    static HasDataConflictBetweenTokens(state, token1, token2) {
+      let _0_access1 = BPMNState.__default.GetTokenVariableAccessBasic(state, token1);
+      let _1_access2 = BPMNState.__default.GetTokenVariableAccessBasic(state, token2);
+      return _dafny.Quantifier((_0_access1).Elements, false, function (_exists_var_0) {
+        let _2_var1 = _exists_var_0;
+        return _dafny.Quantifier((_1_access2).Elements, false, function (_exists_var_1) {
+          let _3_var2 = _exists_var_1;
+          return ((((_0_access1).contains(_2_var1)) && ((_1_access2).contains(_3_var2))) && (_dafny.areEqual((_2_var1).dtor_variable, (_3_var2).dtor_variable))) && ((_dafny.areEqual((_2_var1).dtor_accessType, BPMNState.AccessType.create_Write())) || (_dafny.areEqual((_3_var2).dtor_accessType, BPMNState.AccessType.create_Write())));
+        });
+      });
+    };
+    static GetTokenVariableAccessBasic(state, tokenId) {
+      let _0_process = (state).dtor_process;
+      let _1_token = (((_0_process).dtor_tokenCollection).dtor_tokens).get(tokenId);
+      let _2_currentNode = (((_0_process).dtor_processDefinition).dtor_nodes).get((_1_token).dtor_location);
+      let _source0 = (_2_currentNode).dtor_nodeType;
+      {
+        if (_source0.is_Task) {
+          let _3_taskType = (_source0).taskType;
+          let _4_data = (_source0).data;
+          if ((_4_data).is_Some) {
+            let _5_taskData = (_4_data).Unwrap();
+            let _6_readAccess = function () {
+              let _coll0 = new _dafny.Set();
+              for (const _compr_0 of ((_5_taskData).dtor_inputVariables).Elements) {
+                let _7_varName = _compr_0;
+                if (_dafny.Seq.contains((_5_taskData).dtor_inputVariables, _7_varName)) {
+                  _coll0.add(BPMNState.VariableAccess.create_VarAccess(_7_varName, BPMNState.AccessType.create_Read()));
+                }
+              }
+              return _coll0;
+            }();
+            let _8_writeAccess = function () {
+              let _coll1 = new _dafny.Set();
+              for (const _compr_1 of ((_5_taskData).dtor_outputVariables).Elements) {
+                let _9_varName = _compr_1;
+                if (_dafny.Seq.contains((_5_taskData).dtor_outputVariables, _9_varName)) {
+                  _coll1.add(BPMNState.VariableAccess.create_VarAccess(_9_varName, BPMNState.AccessType.create_Write()));
+                }
+              }
+              return _coll1;
+            }();
+            return (_6_readAccess).Union(_8_writeAccess);
+          } else {
+            return _dafny.Set.fromElements();
+          }
+        }
+      }
+      {
+        return _dafny.Set.fromElements();
+      }
+    };
+    static HasActivityConflicts(state) {
+      let _source0 = state;
+      {
+        if (_source0.is_Running) {
+          let _0_process = (_source0).process;
+          let _1_activeTokens = Token.__default.GetActiveTokens((_0_process).dtor_tokenCollection);
+          return _dafny.Quantifier((((_0_process).dtor_processDefinition).dtor_nodes).Keys.Elements, false, function (_exists_var_0) {
+            let _2_nodeId = _exists_var_0;
+            return (((((_0_process).dtor_processDefinition).dtor_nodes).contains(_2_nodeId)) && (!(BPMNState.__default.IsParallelJoinNode((((_0_process).dtor_processDefinition).dtor_nodes).get(_2_nodeId))))) && ((_dafny.ONE).isLessThan(new BigNumber((BPMNState.__default.GetActiveTokensAtLocation((_0_process).dtor_tokenCollection, _2_nodeId)).length)));
+          });
+        }
+      }
+      {
+        return false;
+      }
+    };
+    static IsParallelJoinNode(node) {
+      let _source0 = (node).dtor_nodeType;
+      {
+        if (_source0.is_Gateway) {
+          let gatewayType0 = (_source0).gatewayType;
+          if (gatewayType0.is_ParallelGateway) {
+            return (_dafny.ONE).isLessThan(new BigNumber(((node).dtor_incoming).length));
+          }
+        }
+      }
+      {
+        return false;
+      }
+    };
+    static GetActiveTokensAtLocation(tokens, location) {
+      return function () {
+        let _coll0 = new _dafny.Set();
+        for (const _compr_0 of ((tokens).dtor_tokens).Keys.Elements) {
+          let _0_tokenId = _compr_0;
+          if (_System.nat._Is(_0_tokenId)) {
+            if (((((tokens).dtor_tokens).contains(_0_tokenId)) && (_dafny.areEqual((((tokens).dtor_tokens).get(_0_tokenId)).dtor_location, location))) && (_dafny.areEqual((((tokens).dtor_tokens).get(_0_tokenId)).dtor_status, Token.TokenStatus.create_Active()))) {
+              _coll0.add(_0_tokenId);
+            }
+          }
+        }
+        return _coll0;
+      }();
+    };
     static get BPMN__PROCESS__WITNESS() {
       return BPMNState.ProcessObj.create_Process(_dafny.Seq.UnicodeFromString("witness"), Token.__default.Create(), Variables.__default.EmptyVariables(), BPMNState.__default.CreateDummyProcessDef(), _dafny.Seq.of(), ExecutionContext.__default.CreateInitialContext());
     };
@@ -2855,6 +3100,198 @@ let BPMNState = (function() {
       return BPMNState.ProcessObj.create_Process(_dafny.Seq.UnicodeFromString("witness"), _1_tokensWithOne, Variables.__default.EmptyVariables(), BPMNState.__default.CreateDummyProcessDef(), _dafny.Seq.of(), _3_consistentContext);
     };
   };
+
+  $module.AccessType = class AccessType {
+    constructor(tag) {
+      this.$tag = tag;
+    }
+    static create_Read() {
+      let $dt = new AccessType(0);
+      return $dt;
+    }
+    static create_Write() {
+      let $dt = new AccessType(1);
+      return $dt;
+    }
+    get is_Read() { return this.$tag === 0; }
+    get is_Write() { return this.$tag === 1; }
+    static get AllSingletonConstructors() {
+      return this.AllSingletonConstructors_();
+    }
+    static *AllSingletonConstructors_() {
+      yield AccessType.create_Read();
+      yield AccessType.create_Write();
+    }
+    toString() {
+      if (this.$tag === 0) {
+        return "BPMNState.AccessType.Read";
+      } else if (this.$tag === 1) {
+        return "BPMNState.AccessType.Write";
+      } else  {
+        return "<unexpected>";
+      }
+    }
+    equals(other) {
+      if (this === other) {
+        return true;
+      } else if (this.$tag === 0) {
+        return other.$tag === 0;
+      } else if (this.$tag === 1) {
+        return other.$tag === 1;
+      } else  {
+        return false; // unexpected
+      }
+    }
+    static Default() {
+      return BPMNState.AccessType.create_Read();
+    }
+    static Rtd() {
+      return class {
+        static get Default() {
+          return AccessType.Default();
+        }
+      };
+    }
+  }
+
+  $module.VariableAccess = class VariableAccess {
+    constructor(tag) {
+      this.$tag = tag;
+    }
+    static create_VarAccess(variable, accessType) {
+      let $dt = new VariableAccess(0);
+      $dt.variable = variable;
+      $dt.accessType = accessType;
+      return $dt;
+    }
+    get is_VarAccess() { return this.$tag === 0; }
+    get dtor_variable() { return this.variable; }
+    get dtor_accessType() { return this.accessType; }
+    toString() {
+      if (this.$tag === 0) {
+        return "BPMNState.VariableAccess.VarAccess" + "(" + this.variable.toVerbatimString(true) + ", " + _dafny.toString(this.accessType) + ")";
+      } else  {
+        return "<unexpected>";
+      }
+    }
+    equals(other) {
+      if (this === other) {
+        return true;
+      } else if (this.$tag === 0) {
+        return other.$tag === 0 && _dafny.areEqual(this.variable, other.variable) && _dafny.areEqual(this.accessType, other.accessType);
+      } else  {
+        return false; // unexpected
+      }
+    }
+    static Default() {
+      return BPMNState.VariableAccess.create_VarAccess(_dafny.Seq.UnicodeFromString(""), BPMNState.AccessType.Default());
+    }
+    static Rtd() {
+      return class {
+        static get Default() {
+          return VariableAccess.Default();
+        }
+      };
+    }
+  }
+
+  $module.ConflictType = class ConflictType {
+    constructor(tag) {
+      this.$tag = tag;
+    }
+    static create_WriteWriteConflict() {
+      let $dt = new ConflictType(0);
+      return $dt;
+    }
+    static create_ReadWriteConflict() {
+      let $dt = new ConflictType(1);
+      return $dt;
+    }
+    get is_WriteWriteConflict() { return this.$tag === 0; }
+    get is_ReadWriteConflict() { return this.$tag === 1; }
+    static get AllSingletonConstructors() {
+      return this.AllSingletonConstructors_();
+    }
+    static *AllSingletonConstructors_() {
+      yield ConflictType.create_WriteWriteConflict();
+      yield ConflictType.create_ReadWriteConflict();
+    }
+    toString() {
+      if (this.$tag === 0) {
+        return "BPMNState.ConflictType.WriteWriteConflict";
+      } else if (this.$tag === 1) {
+        return "BPMNState.ConflictType.ReadWriteConflict";
+      } else  {
+        return "<unexpected>";
+      }
+    }
+    equals(other) {
+      if (this === other) {
+        return true;
+      } else if (this.$tag === 0) {
+        return other.$tag === 0;
+      } else if (this.$tag === 1) {
+        return other.$tag === 1;
+      } else  {
+        return false; // unexpected
+      }
+    }
+    static Default() {
+      return BPMNState.ConflictType.create_WriteWriteConflict();
+    }
+    static Rtd() {
+      return class {
+        static get Default() {
+          return ConflictType.Default();
+        }
+      };
+    }
+  }
+
+  $module.DataConflict = class DataConflict {
+    constructor(tag) {
+      this.$tag = tag;
+    }
+    static create_Conflict(variable, conflictType, token1, token2) {
+      let $dt = new DataConflict(0);
+      $dt.variable = variable;
+      $dt.conflictType = conflictType;
+      $dt.token1 = token1;
+      $dt.token2 = token2;
+      return $dt;
+    }
+    get is_Conflict() { return this.$tag === 0; }
+    get dtor_variable() { return this.variable; }
+    get dtor_conflictType() { return this.conflictType; }
+    get dtor_token1() { return this.token1; }
+    get dtor_token2() { return this.token2; }
+    toString() {
+      if (this.$tag === 0) {
+        return "BPMNState.DataConflict.Conflict" + "(" + this.variable.toVerbatimString(true) + ", " + _dafny.toString(this.conflictType) + ", " + _dafny.toString(this.token1) + ", " + _dafny.toString(this.token2) + ")";
+      } else  {
+        return "<unexpected>";
+      }
+    }
+    equals(other) {
+      if (this === other) {
+        return true;
+      } else if (this.$tag === 0) {
+        return other.$tag === 0 && _dafny.areEqual(this.variable, other.variable) && _dafny.areEqual(this.conflictType, other.conflictType) && _dafny.areEqual(this.token1, other.token1) && _dafny.areEqual(this.token2, other.token2);
+      } else  {
+        return false; // unexpected
+      }
+    }
+    static Default() {
+      return BPMNState.DataConflict.create_Conflict(_dafny.Seq.UnicodeFromString(""), BPMNState.ConflictType.Default(), _dafny.ZERO, _dafny.ZERO);
+    }
+    static Rtd() {
+      return class {
+        static get Default() {
+          return DataConflict.Default();
+        }
+      };
+    }
+  }
 
   $module.ErrorCode = class ErrorCode {
     constructor(tag) {
@@ -2908,6 +3345,11 @@ let BPMNState = (function() {
       $dt.message = message;
       return $dt;
     }
+    static create_DataConflictError(conflicts) {
+      let $dt = new ErrorCode(9);
+      $dt.conflicts = conflicts;
+      return $dt;
+    }
     get is_ValidationError() { return this.$tag === 0; }
     get is_RuntimeError() { return this.$tag === 1; }
     get is_TimeoutError() { return this.$tag === 2; }
@@ -2917,11 +3359,13 @@ let BPMNState = (function() {
     get is_FlowError() { return this.$tag === 6; }
     get is_TokenError() { return this.$tag === 7; }
     get is_DefinitionError() { return this.$tag === 8; }
+    get is_DataConflictError() { return this.$tag === 9; }
     get dtor_message() { return this.message; }
     get dtor_details() { return this.details; }
     get dtor_nodeId() { return this.nodeId; }
     get dtor_flowId() { return this.flowId; }
     get dtor_tokenId() { return this.tokenId; }
+    get dtor_conflicts() { return this.conflicts; }
     toString() {
       if (this.$tag === 0) {
         return "BPMNState.ErrorCode.ValidationError" + "(" + this.message.toVerbatimString(true) + ")";
@@ -2941,6 +3385,8 @@ let BPMNState = (function() {
         return "BPMNState.ErrorCode.TokenError" + "(" + _dafny.toString(this.tokenId) + ", " + this.message.toVerbatimString(true) + ")";
       } else if (this.$tag === 8) {
         return "BPMNState.ErrorCode.DefinitionError" + "(" + this.message.toVerbatimString(true) + ")";
+      } else if (this.$tag === 9) {
+        return "BPMNState.ErrorCode.DataConflictError" + "(" + _dafny.toString(this.conflicts) + ")";
       } else  {
         return "<unexpected>";
       }
@@ -2966,6 +3412,8 @@ let BPMNState = (function() {
         return other.$tag === 7 && _dafny.areEqual(this.tokenId, other.tokenId) && _dafny.areEqual(this.message, other.message);
       } else if (this.$tag === 8) {
         return other.$tag === 8 && _dafny.areEqual(this.message, other.message);
+      } else if (this.$tag === 9) {
+        return other.$tag === 9 && _dafny.areEqual(this.conflicts, other.conflicts);
       } else  {
         return false; // unexpected
       }
@@ -3414,7 +3862,7 @@ let ExecutionInit = (function() {
       return BPMNState.State.create_Running(_12_newProcess);
     };
     static PickOneString(s) {
-      return function (_let_dummy_38) {
+      return function (_let_dummy_39) {
         let _0_x = undefined;
         L_ASSIGN_SUCH_THAT_0: {
           for (const _assign_such_that_0 of (s).Elements) {
@@ -3472,13 +3920,13 @@ let ExecutionInit = (function() {
       let _pat_let_tv4 = process;
       return _dafny.Quantifier((Token.__default.GetActiveTokens((process).dtor_tokenCollection)).Elements, true, function (_forall_var_0) {
         let _0_tokenId = _forall_var_0;
-        return !((Token.__default.GetActiveTokens((process).dtor_tokenCollection)).contains(_0_tokenId)) || (function (_pat_let39_0) {
+        return !((Token.__default.GetActiveTokens((process).dtor_tokenCollection)).contains(_0_tokenId)) || (function (_pat_let40_0) {
           return function (_1_location) {
             return (((((_pat_let_tv0).dtor_processDefinition).dtor_nodes).contains(_1_location)) && ((_dafny.ZERO).isLessThan(new BigNumber((((((_pat_let_tv1).dtor_processDefinition).dtor_nodes).get(_1_location)).dtor_outgoing).length)))) && (_dafny.Quantifier((((((_pat_let_tv2).dtor_processDefinition).dtor_nodes).get(_1_location)).dtor_outgoing).Elements, true, function (_forall_var_1) {
               let _2_flowId = _forall_var_1;
               return !((((((_pat_let_tv3).dtor_processDefinition).dtor_nodes).get(_1_location)).dtor_outgoing).contains(_2_flowId)) || ((((_pat_let_tv4).dtor_processDefinition).dtor_flows).contains(_2_flowId));
             }));
-          }(_pat_let39_0);
+          }(_pat_let40_0);
         }(((((process).dtor_tokenCollection).dtor_tokens).get(_0_tokenId)).dtor_location));
       });
     };
@@ -3486,7 +3934,7 @@ let ExecutionInit = (function() {
       let _pat_let_tv0 = state;
       let _0_token = ((((state).dtor_process).dtor_tokenCollection).dtor_tokens).get(tokenId);
       let _1_location = (_0_token).dtor_location;
-      return (((((state).dtor_process).dtor_processDefinition).dtor_nodes).contains(_1_location)) && (function (_pat_let40_0) {
+      return (((((state).dtor_process).dtor_processDefinition).dtor_nodes).contains(_1_location)) && (function (_pat_let41_0) {
         return function (_2_node) {
           return function () {
             let _source0 = (_2_node).dtor_nodeType;
@@ -3514,7 +3962,7 @@ let ExecutionInit = (function() {
               return true;
             }
           }();
-        }(_pat_let40_0);
+        }(_pat_let41_0);
       }(((((state).dtor_process).dtor_processDefinition).dtor_nodes).get(_1_location)));
     };
   };
@@ -3577,31 +4025,42 @@ let ExecutionEngine = (function() {
         if ((new BigNumber((_2_executableTokensFromQueue).length)).isEqualTo(_dafny.ZERO)) {
           return BPMNState.State.create_Error(_0_process, BPMNState.ErrorCode.create_DeadlockError(_dafny.Seq.UnicodeFromString("No tokens can be executed in current state")));
         } else {
-          let _3_tokenToExecute = Seq.__default.First(_2_executableTokensFromQueue);
-          return ExecutionEngine.__default.ExecuteTokenStep(state, _3_tokenToExecute);
+          let _let_tmp_rhs0 = ExecutionEngine.__default.GetConflictFreeTokensFromQueue(state);
+          let _3_conflictFreeTokens = (_let_tmp_rhs0)[0];
+          let _4_conflicts = (_let_tmp_rhs0)[1];
+          if ((_dafny.ZERO).isLessThan(new BigNumber((_4_conflicts).length))) {
+            return BPMNState.__default.CreateDataConflictError(_0_process, _4_conflicts);
+          } else if ((new BigNumber((_3_conflictFreeTokens).length)).isEqualTo(_dafny.ZERO)) {
+            return BPMNState.State.create_Error(_0_process, BPMNState.ErrorCode.create_DeadlockError(_dafny.Seq.UnicodeFromString("No conflict-free tokens can be executed")));
+          } else {
+            let _5_tokenToExecute = Seq.__default.First(_3_conflictFreeTokens);
+            return ExecutionEngine.__default.ExecuteTokenStep(state, _5_tokenToExecute);
+          }
         }
       }
     };
     static Execute(state) {
       while ((_dafny.ZERO).isLessThan(new BigNumber(((((state).dtor_process).dtor_context).dtor_executionQueue).length))) {
-        let _0_process;
-        _0_process = (state).dtor_process;
+        let _0_executableTokensFromQueue;
+        _0_executableTokensFromQueue = ExecutionEngine.__default.GetExecutableTokensFromQueue(state);
+        let _1_process;
+        _1_process = (state).dtor_process;
         let _let_tmp_rhs0 = ExecutionContext.__default.DequeueToken(((state).dtor_process).dtor_context);
-        let _1_newContext = (_let_tmp_rhs0)[0];
-        let _2_tokenId = (_let_tmp_rhs0)[1];
-        let _3_token;
-        _3_token = (((_0_process).dtor_tokenCollection).dtor_tokens).get(_2_tokenId);
-        let _4_currentNode;
-        _4_currentNode = (((_0_process).dtor_processDefinition).dtor_nodes).get((_3_token).dtor_location);
-        let _5_newState;
-        let _source0 = (_4_currentNode).dtor_nodeType;
+        let _2_newContext = (_let_tmp_rhs0)[0];
+        let _3_tokenId = (_let_tmp_rhs0)[1];
+        let _4_token;
+        _4_token = (((_1_process).dtor_tokenCollection).dtor_tokens).get(_3_tokenId);
+        let _5_currentNode;
+        _5_currentNode = (((_1_process).dtor_processDefinition).dtor_nodes).get((_4_token).dtor_location);
+        let _6_newState;
+        let _source0 = (_5_currentNode).dtor_nodeType;
         Lmatch0: {
           {
             if (_source0.is_StartEvent) {
               if (ExecutionInit.__default.CanExecuteStartEvent(state)) {
-                _5_newState = ExecutionEngine.__default.ExecuteStartEvent(state);
+                _6_newState = ExecutionEngine.__default.ExecuteStartEvent(state);
               } else {
-                _5_newState = state;
+                _6_newState = state;
               }
               break Lmatch0;
             }
@@ -3609,30 +4068,31 @@ let ExecutionEngine = (function() {
           {
             if (_source0.is_EndEvent) {
               if ((state).is_Running) {
-                _5_newState = ExecutionEngine.__default.ExecuteEndEvent(state, _2_tokenId);
+                _6_newState = ExecutionEngine.__default.ExecuteEndEvent(state, _3_tokenId);
               } else {
-                _5_newState = BPMNState.State.create_Error((state).dtor_process, BPMNState.ErrorCode.create_ExecutionError((_3_token).dtor_location, _dafny.Seq.UnicodeFromString("Invalid state for EndEvent")));
+                _6_newState = BPMNState.State.create_Error((state).dtor_process, BPMNState.ErrorCode.create_ExecutionError((_4_token).dtor_location, _dafny.Seq.UnicodeFromString("Invalid state for EndEvent")));
               }
               break Lmatch0;
             }
           }
           {
             if (_source0.is_Task) {
-              let _6_taskType = (_source0).taskType;
-              _5_newState = ExecutionEngine.__default.ExecuteTask(state, _2_tokenId, _6_taskType);
+              let _7_taskType = (_source0).taskType;
+              let _8_data = (_source0).data;
+              _6_newState = ExecutionEngine.__default.ExecuteTask(state, _3_tokenId, _7_taskType, _8_data);
               break Lmatch0;
             }
           }
           {
             if (_source0.is_Gateway) {
-              let _7_gatewayType = (_source0).gatewayType;
-              _5_newState = ExecutionEngine.__default.ExecuteGateway(state, _2_tokenId, _7_gatewayType);
+              let _9_gatewayType = (_source0).gatewayType;
+              _6_newState = ExecutionEngine.__default.ExecuteGateway(state, _3_tokenId, _9_gatewayType);
               break Lmatch0;
             }
           }
           {
-            let _8_eventType = (_source0).eventType;
-            _5_newState = ExecutionEngine.__default.ExecuteIntermediateEvent(state, _2_tokenId, _8_eventType);
+            let _10_eventType = (_source0).eventType;
+            _6_newState = ExecutionEngine.__default.ExecuteIntermediateEvent(state, _3_tokenId, _10_eventType);
           }
         }
       }
@@ -3724,18 +4184,19 @@ let ExecutionEngine = (function() {
       {
         if (_source0.is_Task) {
           let _3_taskType = (_source0).taskType;
-          return ExecutionEngine.__default.ExecuteTask(state, tokenId, _3_taskType);
+          let _4_data = (_source0).data;
+          return ExecutionEngine.__default.ExecuteTask(state, tokenId, _3_taskType, _4_data);
         }
       }
       {
         if (_source0.is_Gateway) {
-          let _4_gatewayType = (_source0).gatewayType;
-          return ExecutionEngine.__default.ExecuteGateway(state, tokenId, _4_gatewayType);
+          let _5_gatewayType = (_source0).gatewayType;
+          return ExecutionEngine.__default.ExecuteGateway(state, tokenId, _5_gatewayType);
         }
       }
       {
-        let _5_eventType = (_source0).eventType;
-        return ExecutionEngine.__default.ExecuteIntermediateEvent(state, tokenId, _5_eventType);
+        let _6_eventType = (_source0).eventType;
+        return ExecutionEngine.__default.ExecuteIntermediateEvent(state, tokenId, _6_eventType);
       }
     };
     static ExecuteStartEvent(state) {
@@ -3755,21 +4216,20 @@ let ExecutionEngine = (function() {
         return BPMNState.State.create_Error(_0_process, BPMNState.ErrorCode.create_ExecutionError((_1_token).dtor_location, _dafny.Seq.UnicodeFromString("Invalid state for EndEvent")));
       }
     };
-    static ExecuteTask(state, tokenId, taskType) {
+    static ExecuteTask(state, tokenId, taskType, data) {
       let _source0 = taskType;
       {
         if (_source0.is_UserTask) {
-          return ExecutionEngine.__default.ExecuteUserTask(state, tokenId);
+          return ExecutionEngine.__default.ExecuteUserTaskWithData(state, tokenId, data);
         }
       }
       {
         if (_source0.is_ServiceTask) {
-          return ExecutionEngine.__default.ExecuteServiceTask(state, tokenId);
+          return ExecutionEngine.__default.ExecuteServiceTaskWithData(state, tokenId, data);
         }
       }
       {
-        let _0_ManualTask = _source0;
-        return ExecutionEngine.__default.ExecuteManualTask(state, tokenId);
+        return ExecutionEngine.__default.ExecuteManualTaskWithData(state, tokenId, data);
       }
     };
     static ExecuteGateway(state, tokenId, gatewayType) {
@@ -3793,6 +4253,17 @@ let ExecutionEngine = (function() {
             } else {
               return state;
             }
+          } else {
+            return ExecutionEngine.__default.ExecuteSimplePassThrough(state, tokenId);
+          }
+        }
+      }
+      {
+        if (_source0.is_ExclusiveGateway) {
+          if ((_dafny.ONE).isLessThan(new BigNumber((_3_outgoingFlows).length))) {
+            return ExecutionEngine.__default.ExecuteExclusiveFork(state, tokenId, _3_outgoingFlows, (_2_currentNode).dtor_defaultFlow);
+          } else if ((_dafny.ONE).isLessThan(new BigNumber((_4_incomingFlows).length))) {
+            return ExecutionEngine.__default.ExecuteExclusiveMerge(state, tokenId);
           } else {
             return ExecutionEngine.__default.ExecuteSimplePassThrough(state, tokenId);
           }
@@ -4043,453 +4514,317 @@ let ExecutionEngine = (function() {
       let _2_node = (((_0_process).dtor_processDefinition).dtor_nodes).get((_1_token).dtor_location);
       return (((((Token.__default.GetActiveTokens(((state).dtor_process).dtor_tokenCollection)).contains(tokenId)) && (((((state).dtor_process).dtor_tokenCollection).dtor_tokens).contains(tokenId))) && (_dafny.areEqual((((((state).dtor_process).dtor_tokenCollection).dtor_tokens).get(tokenId)).dtor_status, Token.TokenStatus.create_Active()))) && (((((state).dtor_process).dtor_processDefinition).dtor_nodes).contains((((((state).dtor_process).dtor_tokenCollection).dtor_tokens).get(tokenId)).dtor_location))) && ((new BigNumber((ExecutionEngine.__default.GetActiveTokensAtLocation((_0_process).dtor_tokenCollection, (_1_token).dtor_location)).length)).isEqualTo(new BigNumber(((_2_node).dtor_incoming).length)));
     };
+    static ReadTaskInputs(globalVars, inputVars) {
+      if ((new BigNumber((inputVars).length)).isEqualTo(_dafny.ZERO)) {
+        return Variables.__default.EmptyVariables();
+      } else {
+        let _0_varName = (inputVars)[_dafny.ZERO];
+        let _1_remainingVars = (inputVars).slice(_dafny.ONE);
+        let _2_localVars = ExecutionEngine.__default.ReadTaskInputs(globalVars, _1_remainingVars);
+        if ((globalVars).contains(_0_varName)) {
+          return Variables.__default.SetVariable(_2_localVars, _0_varName, (globalVars).get(_0_varName));
+        } else {
+          return _2_localVars;
+        }
+      }
+    };
+    static WriteTaskOutputs(globalVars, localVars, outputVars) {
+      if ((new BigNumber((outputVars).length)).isEqualTo(_dafny.ZERO)) {
+        return globalVars;
+      } else {
+        let _0_varName = (outputVars)[_dafny.ZERO];
+        let _1_remainingVars = (outputVars).slice(_dafny.ONE);
+        let _2_updatedGlobals = ExecutionEngine.__default.WriteTaskOutputs(globalVars, localVars, _1_remainingVars);
+        if ((localVars).contains(_0_varName)) {
+          return Variables.__default.SetVariable(_2_updatedGlobals, _0_varName, (localVars).get(_0_varName));
+        } else {
+          return _2_updatedGlobals;
+        }
+      }
+    };
+    static SimulateTaskExecution(taskType, inputs, taskId) {
+      let _source0 = taskType;
+      {
+        if (_source0.is_UserTask) {
+          return Variables.__default.SetVariable(inputs, _dafny.Seq.Concat(taskId, _dafny.Seq.UnicodeFromString("_completed")), Variables.VariableValue.create_BoolValue(true));
+        }
+      }
+      {
+        if (_source0.is_ServiceTask) {
+          return Variables.__default.SetVariable(inputs, _dafny.Seq.Concat(taskId, _dafny.Seq.UnicodeFromString("_result")), Variables.VariableValue.create_StringValue(_dafny.Seq.UnicodeFromString("service_success")));
+        }
+      }
+      {
+        let _0_ScriptTask = _source0;
+        return Variables.__default.SetVariable(inputs, _dafny.Seq.Concat(taskId, _dafny.Seq.UnicodeFromString("_script_output")), Variables.VariableValue.create_IntValue(new BigNumber(42)));
+      }
+      {
+        if (_source0.is_ManualTask) {
+          return Variables.__default.SetVariable(inputs, _dafny.Seq.Concat(taskId, _dafny.Seq.UnicodeFromString("_manual_done")), Variables.VariableValue.create_BoolValue(true));
+        }
+      }
+      {
+        let _1_BusinessRuleTask = _source0;
+        return Variables.__default.SetVariable(inputs, _dafny.Seq.Concat(taskId, _dafny.Seq.UnicodeFromString("_rule_result")), Variables.VariableValue.create_StringValue(_dafny.Seq.UnicodeFromString("rule_passed")));
+      }
+    };
+    static ExecuteTaskWithData(state, tokenId, taskType, data) {
+      let _pat_let_tv0 = taskType;
+      let _0_process = (state).dtor_process;
+      let _1_token = (((_0_process).dtor_tokenCollection).dtor_tokens).get(tokenId);
+      let _2_currentNode = (((_0_process).dtor_processDefinition).dtor_nodes).get((_1_token).dtor_location);
+      let _3_outgoingFlows = (_2_currentNode).dtor_outgoing;
+      if ((new BigNumber((_3_outgoingFlows).length)).isEqualTo(_dafny.ONE)) {
+        let _4_flowId = Token.__default.PickOne(_3_outgoingFlows);
+        if ((((_0_process).dtor_processDefinition).dtor_flows).contains(_4_flowId)) {
+          let _5_nextNodeId = ((((_0_process).dtor_processDefinition).dtor_flows).get(_4_flowId)).dtor_targetRef;
+          let _6_updatedGlobalVars = (((data).is_Some) ? (function (_pat_let42_0) {
+            return function (_7_taskData) {
+              return function (_pat_let43_0) {
+                return function (_8_localInputs) {
+                  return function (_pat_let44_0) {
+                    return function (_9_localOutputs) {
+                      return ExecutionEngine.__default.WriteTaskOutputs((_0_process).dtor_globalVariables, _9_localOutputs, (_7_taskData).dtor_outputVariables);
+                    }(_pat_let44_0);
+                  }(ExecutionEngine.__default.SimulateTaskExecution(_pat_let_tv0, _8_localInputs, (_1_token).dtor_location));
+                }(_pat_let43_0);
+              }(ExecutionEngine.__default.ReadTaskInputs((_0_process).dtor_globalVariables, (_7_taskData).dtor_inputVariables));
+            }(_pat_let42_0);
+          }((data).Unwrap())) : ((_0_process).dtor_globalVariables));
+          let _10_tokensAfterConsume = Token.__default.ConsumeToken((_0_process).dtor_tokenCollection, tokenId);
+          let _let_tmp_rhs0 = Token.__default.CreateToken(_10_tokensAfterConsume, _5_nextNodeId);
+          let _11_tokensWithNext = (_let_tmp_rhs0)[0];
+          let _12_nextTokenId = (_let_tmp_rhs0)[1];
+          let _13_newHistory = _dafny.Seq.Concat((_0_process).dtor_executionHistory, _dafny.Seq.of(BPMNState.ExecutionEvent.create_Event(_dafny.ZERO, (_1_token).dtor_location, BPMNState.EventType.create_NodeExited(), tokenId, Variables.__default.EmptyVariables()), BPMNState.ExecutionEvent.create_Event(_dafny.ONE, _5_nextNodeId, BPMNState.EventType.create_NodeEntered(), _12_nextTokenId, Variables.__default.EmptyVariables())));
+          let _14_updatedContext = ExecutionContext.__default.CreateConsistentContext(_11_tokensWithNext, _5_nextNodeId, (((_0_process).dtor_context).dtor_executionStep).plus(_dafny.ONE));
+          let _15_updatedProcess = BPMNState.ProcessObj.create_Process((_0_process).dtor_processId, _11_tokensWithNext, _6_updatedGlobalVars, (_0_process).dtor_processDefinition, _13_newHistory, _14_updatedContext);
+          return BPMNState.State.create_Running(_15_updatedProcess);
+        } else {
+          return BPMNState.State.create_Error(_0_process, BPMNState.ErrorCode.create_FlowError(_4_flowId, _dafny.Seq.UnicodeFromString("Flow not found in process definition")));
+        }
+      } else {
+        return BPMNState.State.create_Error(_0_process, BPMNState.ErrorCode.create_ExecutionError((_1_token).dtor_location, _dafny.Seq.UnicodeFromString("Task should have exactly one outgoing flow")));
+      }
+    };
+    static ExecuteUserTaskWithData(state, tokenId, data) {
+      return ExecutionEngine.__default.ExecuteTaskWithData(state, tokenId, ProcessDefinition.TaskType.create_UserTask(), data);
+    };
+    static ExecuteServiceTaskWithData(state, tokenId, data) {
+      return ExecutionEngine.__default.ExecuteTaskWithData(state, tokenId, ProcessDefinition.TaskType.create_ServiceTask(), data);
+    };
+    static ExecuteManualTaskWithData(state, tokenId, data) {
+      return ExecutionEngine.__default.ExecuteTaskWithData(state, tokenId, ProcessDefinition.TaskType.create_ManualTask(), data);
+    };
+    static GetTokenVariableAccess(state, tokenId) {
+      let _0_process = (state).dtor_process;
+      let _1_token = (((_0_process).dtor_tokenCollection).dtor_tokens).get(tokenId);
+      let _2_currentNode = (((_0_process).dtor_processDefinition).dtor_nodes).get((_1_token).dtor_location);
+      let _source0 = (_2_currentNode).dtor_nodeType;
+      {
+        if (_source0.is_Task) {
+          let _3_taskType = (_source0).taskType;
+          let _4_data = (_source0).data;
+          if ((_4_data).is_Some) {
+            let _5_taskData = (_4_data).Unwrap();
+            let _6_readAccess = _dafny.Seq.Create(new BigNumber(((_5_taskData).dtor_inputVariables).length), ((_7_taskData) => function (_8_i) {
+              return BPMNState.VariableAccess.create_VarAccess(((_7_taskData).dtor_inputVariables)[_8_i], BPMNState.AccessType.create_Read());
+            })(_5_taskData));
+            let _9_writeAccess = _dafny.Seq.Create(new BigNumber(((_5_taskData).dtor_outputVariables).length), ((_10_taskData) => function (_11_i) {
+              return BPMNState.VariableAccess.create_VarAccess(((_10_taskData).dtor_outputVariables)[_11_i], BPMNState.AccessType.create_Write());
+            })(_5_taskData));
+            return _dafny.Seq.Concat(_6_readAccess, _9_writeAccess);
+          } else {
+            return _dafny.Seq.of();
+          }
+        }
+      }
+      {
+        return _dafny.Seq.of();
+      }
+    };
+    static DetectConflictBetweenTokens(token1, access1, token2, access2) {
+      if (((new BigNumber((access1).length)).isEqualTo(_dafny.ZERO)) || ((new BigNumber((access2).length)).isEqualTo(_dafny.ZERO))) {
+        return _dafny.Seq.of();
+      } else {
+        return ExecutionEngine.__default.DetectConflictHelper(token1, access1, token2, access2, _dafny.ZERO, _dafny.ZERO, _dafny.Seq.of());
+      }
+    };
+    static DetectConflictHelper(token1, access1, token2, access2, i, j, acc) {
+      TAIL_CALL_START: while (true) {
+        if ((new BigNumber((access1).length)).isLessThanOrEqualTo(i)) {
+          return acc;
+        } else if ((new BigNumber((access2).length)).isLessThanOrEqualTo(j)) {
+          let _in0 = token1;
+          let _in1 = access1;
+          let _in2 = token2;
+          let _in3 = access2;
+          let _in4 = (i).plus(_dafny.ONE);
+          let _in5 = _dafny.ZERO;
+          let _in6 = acc;
+          token1 = _in0;
+          access1 = _in1;
+          token2 = _in2;
+          access2 = _in3;
+          i = _in4;
+          j = _in5;
+          acc = _in6;
+          continue TAIL_CALL_START;
+        } else {
+          let _0_newAcc = (((_dafny.areEqual(((access1)[i]).dtor_variable, ((access2)[j]).dtor_variable)) && (BPMNState.__default.HasConflict(((access1)[i]).dtor_accessType, ((access2)[j]).dtor_accessType))) ? (_dafny.Seq.Concat(acc, _dafny.Seq.of(BPMNState.__default.CreateDataConflict(((access1)[i]).dtor_variable, ((access1)[i]).dtor_accessType, ((access2)[j]).dtor_accessType, token1, token2)))) : (acc));
+          let _in7 = token1;
+          let _in8 = access1;
+          let _in9 = token2;
+          let _in10 = access2;
+          let _in11 = i;
+          let _in12 = (j).plus(_dafny.ONE);
+          let _in13 = _0_newAcc;
+          token1 = _in7;
+          access1 = _in8;
+          token2 = _in9;
+          access2 = _in10;
+          i = _in11;
+          j = _in12;
+          acc = _in13;
+          continue TAIL_CALL_START;
+        }
+      }
+    };
+    static DetectConflictsWithTokens(token, tokenAccess, otherTokens, state) {
+      if ((new BigNumber((otherTokens).length)).isEqualTo(_dafny.ZERO)) {
+        return _dafny.Seq.of();
+      } else {
+        let _0_firstOther = Seq.__default.First(otherTokens);
+        let _1_restOthers = Seq.__default.DropFirst(otherTokens);
+        let _2_firstOtherAccess = ExecutionEngine.__default.GetTokenVariableAccess(state, _0_firstOther);
+        let _3_conflictsWithFirst = ExecutionEngine.__default.DetectConflictBetweenTokens(token, tokenAccess, _0_firstOther, _2_firstOtherAccess);
+        let _4_conflictsWithRest = ExecutionEngine.__default.DetectConflictsWithTokens(token, tokenAccess, _1_restOthers, state);
+        return _dafny.Seq.Concat(_3_conflictsWithFirst, _4_conflictsWithRest);
+      }
+    };
+    static FilterConflictFreeTokens(queue, state) {
+      if ((new BigNumber((queue).length)).isEqualTo(_dafny.ZERO)) {
+        return _dafny.Tuple.of(_dafny.Seq.of(), _dafny.Seq.of());
+      } else if ((new BigNumber((queue).length)).isEqualTo(_dafny.ONE)) {
+        return _dafny.Tuple.of(_dafny.Seq.of(Seq.__default.First(queue)), _dafny.Seq.of());
+      } else {
+        let _0_firstToken = Seq.__default.First(queue);
+        let _1_restQueue = Seq.__default.DropFirst(queue);
+        let _let_tmp_rhs0 = ExecutionEngine.__default.FilterConflictFreeTokens(_1_restQueue, state);
+        let _2_restConflictFree = (_let_tmp_rhs0)[0];
+        let _3_restConflicts = (_let_tmp_rhs0)[1];
+        let _4_firstAccess = ExecutionEngine.__default.GetTokenVariableAccess(state, _0_firstToken);
+        let _5_conflictsWithFirst = ExecutionEngine.__default.DetectConflictsWithTokens(_0_firstToken, _4_firstAccess, _2_restConflictFree, state);
+        if ((_dafny.ZERO).isLessThan(new BigNumber((_5_conflictsWithFirst).length))) {
+          return _dafny.Tuple.of(_2_restConflictFree, _dafny.Seq.Concat(_3_restConflicts, _5_conflictsWithFirst));
+        } else {
+          return _dafny.Tuple.of(_dafny.Seq.Concat(_dafny.Seq.of(_0_firstToken), _2_restConflictFree), _3_restConflicts);
+        }
+      }
+    };
+    static GetConflictFreeTokensFromQueue(state) {
+      let _0_executableTokens = ExecutionEngine.__default.GetExecutableTokensFromQueue(state);
+      return ExecutionEngine.__default.FilterConflictFreeTokens(_0_executableTokens, state);
+    };
+    static ExecuteExclusiveFork(state, tokenId, outgoingFlows, defaultFlow) {
+      let _0_process = (state).dtor_process;
+      let _1_selectedFlow = ExecutionEngine.__default.EvaluateExclusiveConditions(state, outgoingFlows, defaultFlow);
+      let _source0 = _1_selectedFlow;
+      {
+        if (_source0.is_Some) {
+          let _2_flowId = (_source0).v;
+          return ExecutionEngine.__default.ExecuteSingleFlow(state, tokenId, _2_flowId);
+        }
+      }
+      {
+        return BPMNState.State.create_Error(_0_process, BPMNState.ErrorCode.create_ExecutionError((((((state).dtor_process).dtor_tokenCollection).dtor_tokens).get(tokenId)).dtor_location, _dafny.Seq.UnicodeFromString("No flow selected in exclusive gateway")));
+      }
+    };
+    static ExecuteExclusiveMerge(state, tokenId) {
+      return ExecutionEngine.__default.ExecuteSimplePassThrough(state, tokenId);
+    };
+    static EvaluateExclusiveConditions(state, outgoingFlows, defaultFlow) {
+      let _0_conditionalFlows = ExecutionEngine.__default.GetConditionalFlows(outgoingFlows, (((state).dtor_process).dtor_processDefinition).dtor_flows);
+      if ((_dafny.ZERO).isLessThan(new BigNumber((_0_conditionalFlows).length))) {
+        let _1_firstFlow = Token.__default.PickOne(_0_conditionalFlows);
+        if (ExecutionEngine.__default.EvaluateFlowCondition(state, _1_firstFlow)) {
+          return _dafny.Option.create_Some(_1_firstFlow);
+        } else if ((defaultFlow).is_Some) {
+          return defaultFlow;
+        } else {
+          return _dafny.Option.create_None();
+        }
+      } else if ((defaultFlow).is_Some) {
+        return defaultFlow;
+      } else {
+        return _dafny.Option.create_None();
+      }
+    };
+    static GetConditionalFlows(flows, flowDefinitions) {
+      return function () {
+        let _coll0 = new _dafny.Set();
+        for (const _compr_0 of (flows).Elements) {
+          let _0_flowId = _compr_0;
+          if (((flows).contains(_0_flowId)) && ((((flowDefinitions).get(_0_flowId)).dtor_condition).is_Some)) {
+            _coll0.add(_0_flowId);
+          }
+        }
+        return _coll0;
+      }();
+    };
+    static EvaluateFlowCondition(state, flowId) {
+      let _0_flow = ((((state).dtor_process).dtor_processDefinition).dtor_flows).get(flowId);
+      let _source0 = (_0_flow).dtor_condition;
+      {
+        if (_source0.is_None) {
+          return true;
+        }
+      }
+      {
+        let _1_conditionExpr = (_source0).v;
+        return ExecutionEngine.__default.EvaluateConditionExpression(state, _1_conditionExpr);
+      }
+    };
+    static EvaluateConditionExpression(state, expression) {
+      return true;
+    };
+    static ExecuteSingleFlow(state, tokenId, flowId) {
+      let _0_process = (state).dtor_process;
+      let _1_flow = (((_0_process).dtor_processDefinition).dtor_flows).get(flowId);
+      let _2_nextNodeId = (_1_flow).dtor_targetRef;
+      let _3_tokensAfterConsume = Token.__default.ConsumeToken((_0_process).dtor_tokenCollection, tokenId);
+      let _let_tmp_rhs0 = Token.__default.CreateToken(_3_tokensAfterConsume, _2_nextNodeId);
+      let _4_tokensWithNext = (_let_tmp_rhs0)[0];
+      let _5_nextTokenId = (_let_tmp_rhs0)[1];
+      let _6_token = (((_0_process).dtor_tokenCollection).dtor_tokens).get(tokenId);
+      let _7_newHistory = _dafny.Seq.Concat((_0_process).dtor_executionHistory, _dafny.Seq.of(BPMNState.ExecutionEvent.create_Event(_dafny.ZERO, (_6_token).dtor_location, BPMNState.EventType.create_NodeExited(), tokenId, Variables.__default.EmptyVariables()), BPMNState.ExecutionEvent.create_Event(_dafny.ONE, _2_nextNodeId, BPMNState.EventType.create_NodeEntered(), _5_nextTokenId, Variables.__default.EmptyVariables())));
+      let _8_updatedContext = ExecutionContext.__default.CreateConsistentContext(_4_tokensWithNext, _2_nextNodeId, (((_0_process).dtor_context).dtor_executionStep).plus(_dafny.ONE));
+      return BPMNState.State.create_Running(BPMNState.ProcessObj.create_Process((_0_process).dtor_processId, _4_tokensWithNext, (_0_process).dtor_globalVariables, (_0_process).dtor_processDefinition, _7_newHistory, _8_updatedContext));
+    };
   };
   return $module;
 })(); // end of module ExecutionEngine
+
 let _module = (function() {
   let $module = {};
 
   return $module;
 })(); // end of module _module
 
-// ===================================
-// BPMN 引擎调试代码
-// ===================================
+// End of generated code
 
-/**
- * 创建包含并行网关的BPMN流程定义
- * 流程：开始事件 -> 并行分叉 -> [任务1, 任务2] -> 并行汇聚 -> 结束事件
- */
-function createSimpleProcess() {
-    console.log('🏗️  Creating BPMN process with parallel gateways...');
-    
-    try {
-        // 创建节点
-        const startNode = ProcessDefinition.Node.create_ProcessNode(
-            _dafny.Seq.UnicodeFromString("start"),
-            _dafny.Seq.UnicodeFromString("开始事件"),
-            ProcessDefinition.NodeType.create_StartEvent(),
-            _dafny.Set.Empty,  // no incoming flows
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow1"))  // to parallel fork
-        );
-
-        // 并行分叉网关
-        const forkNode = ProcessDefinition.Node.create_ProcessNode(
-            _dafny.Seq.UnicodeFromString("fork"),
-            _dafny.Seq.UnicodeFromString("并行分叉"),
-            ProcessDefinition.NodeType.create_Gateway(ProcessDefinition.GatewayType.create_ParallelGateway()),
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow1")),  // from start
-            _dafny.Set.fromElements(
-                _dafny.Seq.UnicodeFromString("flow2"), 
-                _dafny.Seq.UnicodeFromString("flow3")
-            )  // to task1 and task2
-        );
-
-        // 并行任务1
-        const task1Node = ProcessDefinition.Node.create_ProcessNode(
-            _dafny.Seq.UnicodeFromString("task1"),
-            _dafny.Seq.UnicodeFromString("用户任务1"),
-            ProcessDefinition.NodeType.create_Task(ProcessDefinition.TaskType.create_UserTask()),
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow2")),  // from fork
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow4"))   // to join
-        );
-
-        // 并行任务2
-        const task2Node = ProcessDefinition.Node.create_ProcessNode(
-            _dafny.Seq.UnicodeFromString("task2"),
-            _dafny.Seq.UnicodeFromString("用户任务2"),
-            ProcessDefinition.NodeType.create_Task(ProcessDefinition.TaskType.create_ServiceTask()),
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow3")),  // from fork
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow5"))   // to join
-        );
-
-        // 并行汇聚网关
-        const joinNode = ProcessDefinition.Node.create_ProcessNode(
-            _dafny.Seq.UnicodeFromString("join"),
-            _dafny.Seq.UnicodeFromString("并行汇聚"),
-            ProcessDefinition.NodeType.create_Gateway(ProcessDefinition.GatewayType.create_ParallelGateway()),
-            _dafny.Set.fromElements(
-                _dafny.Seq.UnicodeFromString("flow4"), 
-                _dafny.Seq.UnicodeFromString("flow5")
-            ),  // from task1 and task2
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow6"))   // to end
-        );
-
-        const endNode = ProcessDefinition.Node.create_ProcessNode(
-            _dafny.Seq.UnicodeFromString("end"),
-            _dafny.Seq.UnicodeFromString("结束事件"),
-            ProcessDefinition.NodeType.create_EndEvent(),
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("flow6")),  // from join
-            _dafny.Set.Empty  // no outgoing flows
-        );
-
-        // 创建流程（sequence flows）
-        const flow1 = ProcessDefinition.SequenceFlow.create_Flow(
-            _dafny.Seq.UnicodeFromString("flow1"),
-            _dafny.Seq.UnicodeFromString("start"),
-            _dafny.Seq.UnicodeFromString("fork"),
-            Optional.Option.create_None()
-        );
-
-        const flow2 = ProcessDefinition.SequenceFlow.create_Flow(
-            _dafny.Seq.UnicodeFromString("flow2"),
-            _dafny.Seq.UnicodeFromString("fork"),
-            _dafny.Seq.UnicodeFromString("task1"),
-            Optional.Option.create_None()
-        );
-
-        const flow3 = ProcessDefinition.SequenceFlow.create_Flow(
-            _dafny.Seq.UnicodeFromString("flow3"),
-            _dafny.Seq.UnicodeFromString("fork"),
-            _dafny.Seq.UnicodeFromString("task2"),
-            Optional.Option.create_None()
-        );
-
-        const flow4 = ProcessDefinition.SequenceFlow.create_Flow(
-            _dafny.Seq.UnicodeFromString("flow4"),
-            _dafny.Seq.UnicodeFromString("task1"),
-            _dafny.Seq.UnicodeFromString("join"),
-            Optional.Option.create_None()
-        );
-
-        const flow5 = ProcessDefinition.SequenceFlow.create_Flow(
-            _dafny.Seq.UnicodeFromString("flow5"),
-            _dafny.Seq.UnicodeFromString("task2"),
-            _dafny.Seq.UnicodeFromString("join"),
-            Optional.Option.create_None()
-        );
-
-        const flow6 = ProcessDefinition.SequenceFlow.create_Flow(
-            _dafny.Seq.UnicodeFromString("flow6"),
-            _dafny.Seq.UnicodeFromString("join"),
-            _dafny.Seq.UnicodeFromString("end"),
-            Optional.Option.create_None()
-        );
-
-        // 创建节点映射
-        const nodes = _dafny.Map.Empty
-            .update(_dafny.Seq.UnicodeFromString("start"), startNode)
-            .update(_dafny.Seq.UnicodeFromString("fork"), forkNode)
-            .update(_dafny.Seq.UnicodeFromString("task1"), task1Node)
-            .update(_dafny.Seq.UnicodeFromString("task2"), task2Node)
-            .update(_dafny.Seq.UnicodeFromString("join"), joinNode)
-            .update(_dafny.Seq.UnicodeFromString("end"), endNode);
-
-        // 创建流程映射
-        const flows = _dafny.Map.Empty
-            .update(_dafny.Seq.UnicodeFromString("flow1"), flow1)
-            .update(_dafny.Seq.UnicodeFromString("flow2"), flow2)
-            .update(_dafny.Seq.UnicodeFromString("flow3"), flow3)
-            .update(_dafny.Seq.UnicodeFromString("flow4"), flow4)
-            .update(_dafny.Seq.UnicodeFromString("flow5"), flow5)
-            .update(_dafny.Seq.UnicodeFromString("flow6"), flow6);
-
-        // 创建流程定义
-        const processDefinition = ProcessDefinition.ProcessDef.create_ProcessDefinition(
-            _dafny.Seq.UnicodeFromString("parallel-process"),
-            _dafny.Seq.UnicodeFromString("并行网关流程"),
-            nodes,
-            flows,
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("start")),
-            _dafny.Set.fromElements(_dafny.Seq.UnicodeFromString("end"))
-        );
-
-        console.log('✅ Process definition created successfully');
-        console.log('📊 Nodes:', nodes.Keys.length);
-        console.log('🔗 Flows:', flows.Keys.length);
-        console.log('🔀 Parallel gateways: 2 (fork & join)');
-        console.log('👥 Parallel tasks: 2 (task1 & task2)');
-        
-        return processDefinition;
-        
-    } catch (error) {
-        console.error('❌ Error creating process definition:', error);
-        throw error;
-    }
-}
-
-/**
- * 初始化流程状态
- */
-function initializeProcess(processDefinition) {
-    console.log('\n⚙️  Initializing process...');
-    
-    try {
-        // 验证流程定义
-        const isValid = BPMNState.__default.ValidProcessDefinition(processDefinition);
-        console.log('🔍 Process definition valid:', isValid);
-        
-        if (!isValid) {
-            throw new Error('Invalid process definition');
-        }
-
-        // 创建初始变量
-        const initialVariables = Variables.__default.EmptyVariables();
-        
-        // 创建初始状态
-        const initialState = BPMNState.__default.CreateInitialState(processDefinition, initialVariables);
-        
-        console.log('✅ Process initialized successfully');
-        console.log('📁 State type:', initialState.is_NotStarted ? 'NotStarted' : 'Other');
-        
-        return initialState;
-        
-    } catch (error) {
-        console.error('❌ Error initializing process:', error);
-        throw error;
-    }
-}
-
-/**
- * 启动流程
- */
-function startProcess(initialState) {
-    console.log('\n🚀 Starting process...');
-    
-    try {
-        // 检查是否可以启动
-        const canStart = ExecutionInit.__default.CanStartProcess(initialState.dtor_processDefinition);
-        console.log('🔍 Can start process:', canStart);
-        
-        if (!canStart) {
-            throw new Error('Cannot start process - no valid start events');
-        }
-
-        // 初始化执行
-        const runningState = ExecutionInit.__default.InitializeExecution(initialState.dtor_processDefinition);
-        
-        console.log('✅ Process started successfully');
-        console.log('📁 State type:', runningState.is_Running ? 'Running' : 'Other');
-        
-        if (runningState.is_Running) {
-            const activeTokens = Token.__default.GetActiveTokens(runningState.dtor_process.dtor_tokenCollection);
-            console.log('🎯 Active tokens:', activeTokens.length);
-        }
-        
-        return runningState;
-        
-    } catch (error) {
-        console.error('❌ Error starting process:', error);
-        throw error;
-    }
-}
-
-/**
- * 执行流程（多步执行）
- */
-function executeProcess(runningState) {
-    console.log('\n⚡ Executing process...');
-    
-    try {
-        let currentState = runningState;
-        let stepCount = 0;
-        const maxSteps = 10; // 防止无限循环
-        
-        while (currentState.is_Running && stepCount < maxSteps) {
-            stepCount++;
-            console.log(`\n📍 Step ${stepCount}:`);
-            
-            // 获取当前活跃令牌
-            const activeTokens = Token.__default.GetActiveTokens(currentState.dtor_process.dtor_tokenCollection);
-            console.log('🎯 Active tokens:', activeTokens.length);
-            
-            if (activeTokens.length === 0) {
-                console.log('⏹️  No active tokens, process should terminate');
-                break;
-            }
-            
-            // 显示当前位置
-            const currentLocations = BPMNState.__default.GetCurrentLocations(currentState);
-            console.log('📍 Current locations:', Array.from(currentLocations.Elements).map(loc => loc.toString()));
-            
-            // 执行一步
-            const nextState = ExecutionEngine.__default.ExecuteStep(currentState);
-            
-            // 检查状态变化
-            if (nextState.is_Running) {
-                console.log('✅ Step executed, still running');
-                currentState = nextState;
-            } else if (nextState.is_Completed) {
-                console.log('🎉 Process completed!');
-                currentState = nextState;
-                break;
-            } else if (nextState.is_Terminated) {
-                console.log('🛑 Process terminated');
-                currentState = nextState;
-                break;
-            } else if (nextState.is_Error) {
-                console.log('❌ Process error:', nextState.dtor_errorCode.toString());
-                currentState = nextState;
-                break;
-            } else {
-                console.log('❓ Unknown state type');
-                break;
-            }
-        }
-        
-        if (stepCount >= maxSteps) {
-            console.log('⚠️  Maximum steps reached, stopping execution');
-        }
-        
-        console.log(`\n📊 Execution completed in ${stepCount} steps`);
-        return currentState;
-        
-    } catch (error) {
-        console.error('❌ Error executing process:', error);
-        throw error;
-    }
-}
-
-/**
- * 显示执行历史
- */
-function displayExecutionHistory(state) {
-    if (!state.is_Running && !state.is_Completed && !state.is_Terminated) {
-        return;
-    }
-    
-    console.log('\n📜 Execution History:');
-    const history = state.dtor_process.dtor_executionHistory;
-    
-    for (let i = 0; i < history.length; i++) {
-        const event = history[i];
-        console.log(`  ${i + 1}. [${event.dtor_timestamp}] ${event.dtor_eventType.toString()} at ${event.dtor_nodeId.toString()}`);
-    }
-}
-
-/**
- * 主执行函数
- */
-function main() {
-    console.log('🎬 BPMN Engine 调试开始');
-    console.log('=' .repeat(50));
-    
-    try {
-        // 1. 创建流程定义
-        const processDefinition = createSimpleProcess();
-        
-        // 2. 初始化流程
-        const initialState = initializeProcess(processDefinition);
-        
-        // 3. 启动流程
-        const runningState = startProcess(initialState);
-        
-        // 4. 执行流程
-        const finalState = executeProcess(runningState);
-        
-        // 5. 显示执行历史
-        displayExecutionHistory(finalState);
-        
-        // 6. 显示最终结果
-        console.log('\n' + '='.repeat(50));
-        console.log('📋 执行总结');
-        console.log('='.repeat(50));
-        
-        if (finalState.is_Completed) {
-            console.log('🎉 状态: 已完成');
-        } else if (finalState.is_Terminated) {
-            console.log('🛑 状态: 已终止');
-        } else if (finalState.is_Error) {
-            console.log('❌ 状态: 错误');
-            if (finalState.dtor_errorCode.dtor_message) {
-                console.log('💬 错误信息:', finalState.dtor_errorCode.dtor_message.toString());
-            }
-            if (finalState.dtor_errorCode.dtor_nodeId) {
-                console.log('📍 错误节点:', finalState.dtor_errorCode.dtor_nodeId.toString());
-            }
-        } else if (finalState.is_Running) {
-            console.log('⏸️  状态: 仍在运行');
-        } else {
-            console.log('❓ 状态: 未知');
-        }
-        
-        console.log('\n✨ BPMN Engine 调试完成!');
-        
-    } catch (error) {
-        console.error('\n💥 严重错误:', error);
-        console.error('📍 错误位置:', error.stack);
-        
-        // 尝试提供更多调试信息
-        console.log('\n🔍 调试信息:');
-        console.log('- 检查所有模块是否正确加载');
-        console.log('- 验证 Dafny 运行时是否可用');
-        console.log('- 确认数据类型构造是否正确');
-    }
-}
-
-// 检查运行时环境
-function checkEnvironment() {
-    console.log('🔍 检查运行时环境...');
-    
-    try {
-        // 检查 Dafny 运行时
-        if (typeof _dafny === 'undefined') {
-            console.error('❌ Dafny 运行时未加载');
-            return false;
-        }
-        console.log('✅ Dafny 运行时已加载');
-        
-        // 检查主要模块 - 直接检查变量
-        if (typeof ProcessDefinition === 'undefined') {
-            console.error('❌ ProcessDefinition 模块未加载');
-            return false;
-        }
-        console.log('✅ ProcessDefinition 模块已加载');
-        
-        if (typeof BPMNState === 'undefined') {
-            console.error('❌ BPMNState 模块未加载');
-            return false;
-        }
-        console.log('✅ BPMNState 模块已加载');
-        
-        if (typeof Token === 'undefined') {
-            console.error('❌ Token 模块未加载');
-            return false;
-        }
-        console.log('✅ Token 模块已加载');
-        
-        if (typeof Variables === 'undefined') {
-            console.error('❌ Variables 模块未加载');
-            return false;
-        }
-        console.log('✅ Variables 模块已加载');
-        
-        if (typeof ExecutionInit === 'undefined') {
-            console.error('❌ ExecutionInit 模块未加载');
-            return false;
-        }
-        console.log('✅ ExecutionInit 模块已加载');
-        
-        if (typeof ExecutionEngine === 'undefined') {
-            console.error('❌ ExecutionEngine 模块未加载');
-            return false;
-        }
-        console.log('✅ ExecutionEngine 模块已加载');
-        
-        if (typeof ExecutionContext === 'undefined') {
-            console.error('❌ ExecutionContext 模块未加载');
-            return false;
-        }
-        console.log('✅ ExecutionContext 模块已加载');
-        
-        if (typeof Optional === 'undefined') {
-            console.error('❌ Optional 模块未加载');
-            return false;
-        }
-        console.log('✅ Optional 模块已加载');
-        
-        console.log('✅ 所有模块检查通过');
-        return true;
-        
-    } catch (error) {
-        console.error('❌ 环境检查失败:', error);
-        return false;
-    }
-}
-
-// 立即执行环境检查和主函数
-if (checkEnvironment()) {
-    main();
-} else {
-    console.error('💥 环境检查失败，无法运行 BPMN Engine');
-} 
+// 模块导出 - 供测试文件使用
+module.exports = {
+  _dafny,
+  _System,
+  Optional,
+  ProcessDefinition,
+  Token,
+  Variables,
+  Seq,
+  ExecutionContext,
+  BPMNState,
+  ExecutionInit,
+  Arrays,
+  ExecutionEngine,
+  _module
+};

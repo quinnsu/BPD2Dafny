@@ -1,6 +1,6 @@
 /** 
   * Core Execution Engine
-  */
+  */ 
 
 include "./token.dfy"
 include "./state.dfy"
@@ -11,6 +11,8 @@ include "./utils/option.dfy"
 include "./Context.dfy"
 include "./utils/Array.dfy"
 include "./utils/Seq.dfy"
+include "../example/json_model.dfy"
+
 module ExecutionEngine {
   import opened Token
   import opened BPMNState
@@ -96,9 +98,17 @@ module ExecutionEngine {
       if |executableTokensFromQueue| == 0 then
         BPMNState.Error(process, DeadlockError("No tokens can be executed in current state"))
       else
-        // Execute the first executable token
-        var tokenToExecute := Seq.First(executableTokensFromQueue);
-        ExecuteTokenStep(state, tokenToExecute)
+        // Check for data conflicts in the queue
+        var (conflictFreeTokens, conflicts) := GetConflictFreeTokensFromQueue(state);
+        
+        if |conflicts| > 0 then
+          BPMNState.CreateDataConflictError(process, conflicts)
+        else if |conflictFreeTokens| == 0 then
+          BPMNState.Error(process, DeadlockError("No conflict-free tokens can be executed"))
+        else
+          // Execute the first conflict-free token
+          var tokenToExecute := Seq.First(conflictFreeTokens);
+          ExecuteTokenStep(state, tokenToExecute)
   }
 
   /**
@@ -114,6 +124,8 @@ module ExecutionEngine {
       decreases *
       invariant ValidState(state)
     {
+      var executableTokensFromQueue := GetExecutableTokensFromQueue(state);
+     
       // pick a token to execute
       var process := state.process;
 
@@ -132,7 +144,7 @@ module ExecutionEngine {
               ExecuteEndEvent(state, tokenId)  
             else
               BPMNState.Error(state.process, ExecutionError(token.location, "Invalid state for EndEvent"))
-          case Task(taskType) => ExecuteTask(state, tokenId, taskType)
+          case Task(taskType, data) => ExecuteTask(state, tokenId, taskType, data)
           case Gateway(gatewayType) => ExecuteGateway(state, tokenId, gatewayType)
           case IntermediateEvent(eventType) => ExecuteIntermediateEvent(state, tokenId, eventType)
         };
@@ -158,17 +170,13 @@ module ExecutionEngine {
       match node.nodeType {
         case Gateway(ParallelGateway) =>
           if |node.incoming| > 1 then
-            // 这是join操作，检查是否所有分支都已到达
             var tokensAtLocation := GetActiveTokensAtLocation(process.tokenCollection, location);
             |tokensAtLocation| == |node.incoming|
           else
-            // 这是fork操作或简单通过，可以立即执行
             true
-        case Gateway(_) =>
-          // 其他类型网关的处理逻辑
+          case Gateway(_) =>
           true
         case _ =>
-          // Task, StartEvent, EndEvent等通常可以立即执行
           true
       }
     else
@@ -214,7 +222,7 @@ module ExecutionEngine {
   {
     FilterExecutableTokens(state.process.context.executionQueue, state)
   }
- 
+  
 function FilterExecutableTokens(
   queue: seq<Token.TokenId>, 
   state: ExecutingState
@@ -248,6 +256,7 @@ function FilterExecutableTokens(
     else
       rest
 }
+ 
 
   function ExecuteTokenStep(state: ExecutingState, tokenId: Token.TokenId): State
     requires ValidState(state)
@@ -268,10 +277,9 @@ function FilterExecutableTokens(
         else
           state
       case EndEvent => 
-        // ExecutingState确保state.Running?为true
         assert state.Running?;
         ExecuteEndEvent(state, tokenId)
-      case Task(taskType) => ExecuteTask(state, tokenId, taskType)
+      case Task(taskType, data) => ExecuteTask(state, tokenId, taskType, data)
       case Gateway(gatewayType) => ExecuteGateway(state, tokenId, gatewayType)
       case IntermediateEvent(eventType) => ExecuteIntermediateEvent(state, tokenId, eventType)
     }
@@ -318,9 +326,7 @@ function FilterExecutableTokens(
                             context := updatedContext
                           );
     
-    // 检查是否还有其他活跃的tokens
     var remainingActiveTokens := GetActiveTokens(tokensAfterConsume);
-    
     if |remainingActiveTokens| == 0 then
       assert ValidProcessState(updatedProcess);
       BPMNState.Completed(updatedProcess, process.globalVariables)
@@ -328,22 +334,22 @@ function FilterExecutableTokens(
       BPMNState.Error(process, ExecutionError(token.location, "Invalid state for EndEvent"))
   }
   // execute the step of a task
-  function ExecuteTask(state: ExecutingState, tokenId: Token.TokenId, taskType: TaskType): State
+  function ExecuteTask(state: ExecutingState, tokenId: Token.TokenId, taskType: TaskType, data: Option<TaskData>): State
     requires tokenId in GetActiveTokens(state.process.tokenCollection)
     requires ValidProcessDefinition(state.process.processDefinition)
     requires ValidProcessState(state.process)
     requires tokenId in state.process.tokenCollection.tokens
     requires ValidTokenCollection(state.process.tokenCollection)
     requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
-    ensures ValidState(ExecuteTask(state, tokenId, taskType))
+    ensures ValidState(ExecuteTask(state, tokenId, taskType, data))
   {
     match taskType {
       case UserTask =>
-        ExecuteUserTask(state, tokenId)
+        ExecuteUserTaskWithData(state, tokenId, data)
       case ServiceTask =>
-        ExecuteServiceTask(state, tokenId)
+        ExecuteServiceTaskWithData(state, tokenId, data)
       case ManualTask =>
-        ExecuteManualTask(state, tokenId)
+        ExecuteManualTaskWithData(state, tokenId, data)
     }
   }
   // execute the step of a gateway
@@ -353,6 +359,7 @@ function FilterExecutableTokens(
     requires ValidProcessDefinition(state.process.processDefinition)
     requires ValidProcessState(state.process)
     ensures ValidState(ExecuteGateway(state, tokenId, gatewayType))
+    
   {
     var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
@@ -374,6 +381,22 @@ function FilterExecutableTokens(
             state
         else
           ExecuteSimplePassThrough(state, tokenId)
+      case ExclusiveGateway =>
+        if |outgoingFlows| > 1 then
+          assert forall flowId :: flowId in outgoingFlows ==> flowId in process.processDefinition.flows;
+          // 从ValidProcessDefinition得出：默认流必须在outgoing flows中
+          assert currentNode.defaultFlow.Some? ==> currentNode.defaultFlow.Unwrap() in currentNode.outgoing;
+          assert currentNode.outgoing == outgoingFlows;
+          assert currentNode.defaultFlow.Some? ==> currentNode.defaultFlow.Unwrap() in outgoingFlows;
+          assert forall flowId :: flowId in outgoingFlows ==> flowId in state.process.processDefinition.flows;
+          ExecuteExclusiveFork(state, tokenId, outgoingFlows, currentNode.defaultFlow)
+        else if |incomingFlows| > 1 then
+          // Exclusive merge: 简单合并，不需要等待
+          assert state.process.tokenCollection.tokens[tokenId].status == Active;
+          assert state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes;
+          ExecuteExclusiveMerge(state, tokenId)
+        else
+          ExecuteSimplePassThrough(state, tokenId)
       case _ =>
         BPMNState.Error(process, DefinitionError("Invalid gateway type"))
     }
@@ -385,7 +408,6 @@ function FilterExecutableTokens(
   match state {
     case Running(process) =>
       var activeTokens := GetActiveTokens(process.tokenCollection);
-      // 所有活跃token都无法继续执行
       forall tokenId :: tokenId in activeTokens ==>
         !CanExecuteToken(state, tokenId)
     case _ => false
@@ -510,14 +532,12 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
     var currentNode := process.processDefinition.nodes[token.location];
-
-    // 获取输出流
     var outgoingFlows := currentNode.outgoing;
     if |outgoingFlows| == 1 then
       var flowId := Token.PickOne(outgoingFlows);
       if flowId in process.processDefinition.flows then
         var nextNodeId := process.processDefinition.flows[flowId].targetRef;
-        // 消费当前token
+ 
         var tokensAfterConsume := Token.ConsumeToken(process.tokenCollection, tokenId);
         var (tokensWithNext, nextTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
 
@@ -574,7 +594,6 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     var incomingFlows := currentNode.incoming;
 
     if |outgoingFlows| > 1 then
-      // 验证所有输出流都在流程定义中
       if forall flowId :: flowId in outgoingFlows ==> flowId in process.processDefinition.flows then
         ExecuteParallelFork(state, tokenId, outgoingFlows)
       else
@@ -622,25 +641,18 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     var process := state.process;
     var token := process.tokenCollection.tokens[tokenId];
 
-    // 消费当前token
     var tokensAfterConsume := Token.ConsumeToken(process.tokenCollection, tokenId);
 
-    // 关键断言：建立推理链
-    // 1. outgoingFlows都在process.processDefinition.flows中
     assert forall flowId :: flowId in outgoingFlows ==> flowId in process.processDefinition.flows;
     
-    // 2. 所有targetRef都在process.processDefinition.nodes中
     assert forall flowId :: flowId in outgoingFlows ==> 
            process.processDefinition.flows[flowId].targetRef in process.processDefinition.nodes;
     
-    // 3. 定义targetNodes集合
     var targetNodes := set flowId | flowId in outgoingFlows ::
                          process.processDefinition.flows[flowId].targetRef;
     
-    // 4. 证明所有targetNodes都在processDefinition.nodes中
     assert forall nodeId :: nodeId in targetNodes ==> nodeId in process.processDefinition.nodes;
 
-    // 为每个输出流创建新token
     var (finalTokens, newTokenIds) := CreateTokensForFlows(
                                         tokensAfterConsume,
                                         outgoingFlows,
@@ -650,7 +662,6 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     assert |newTokenIds| == |outgoingFlows|;
     assert |finalTokens.tokens| == |tokensAfterConsume.tokens| + |outgoingFlows|;
 
-    // 关键断言：证明每个目标节点都有token
     var targetNodes := set flowId | flowId in outgoingFlows ::
                          process.processDefinition.flows[flowId].targetRef;
     assert forall nodeId :: nodeId in targetNodes ==>
@@ -658,17 +669,13 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
                                                 finalTokens.tokens[tokenId].location == nodeId &&
                                                finalTokens.tokens[tokenId].status == Active;
     
-    // 由于targetNodes ⊆ processDefinition.nodes，所以新token的位置都在nodes中
-    // 利用CreateTokensForFlows的后置条件：每个flow都有对应的token
     assert forall flowId :: flowId in outgoingFlows ==>
              exists tokenId :: tokenId in newTokenIds &&
                                finalTokens.tokens[tokenId].location == process.processDefinition.flows[flowId].targetRef;
     
-    // 结合ValidProcessDefinition：所有targetRef都在nodes中
     assume forall tokenId :: tokenId in newTokenIds ==>
                               finalTokens.tokens[tokenId].location in process.processDefinition.nodes;
 
-    // 更新执行历史..
     var exitEvent := Event(0, token.location, NodeExited, tokenId, Variables.EmptyVariables());
     var enterEvents := CreateEnterEvents(newTokenIds, outgoingFlows, process.processDefinition.flows);
     var newHistory := process.executionHistory + [exitEvent] + enterEvents;
@@ -689,28 +696,26 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
                     context := updatedContext
                   ));
 
-    // 断言：验证每个目标节点都有token
+
     assert forall flowId :: flowId in outgoingFlows ==> 
       var targetNode := process.processDefinition.flows[flowId].targetRef;
       exists tokenId :: tokenId in GetActiveTokens(result.process.tokenCollection) &&
                         result.process.tokenCollection.tokens[tokenId].location == targetNode;
 
-    // 最终验证ValidProcessState的四个条件：
-    
-    // 条件1：所有active token的位置都在processDefinition.nodes中
+
     assume forall tokenId :: tokenId in GetActiveTokens(result.process.tokenCollection) ==>
                        result.process.tokenCollection.tokens[tokenId].location in result.process.processDefinition.nodes;
     
-    // 条件2：context.executionQueue中的token都在tokenCollection中且为Active状态  
+
     assert forall tokenId :: tokenId in result.process.context.executionQueue ==>
                         tokenId in result.process.tokenCollection.tokens &&
                         result.process.tokenCollection.tokens[tokenId].status == Active;
     
-    // 条件3：所有active token都在executionQueue中（双向绑定）
+
     assert forall tokenId :: tokenId in GetActiveTokens(result.process.tokenCollection) ==>
                         tokenId in result.process.context.executionQueue;
     
-    // 条件4：context本身有效
+
     assert ExecutionContext.ValidContext(result.process.context);
 
     result
@@ -745,7 +750,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
   }
 
   /**
-    * 获取在特定位置的所有tokens
+    * Get all tokens at a specific location
     */
   function GetTokensAtLocation(tokens: Token.Collection, location: string): set<Token.TokenId>
   {
@@ -753,25 +758,25 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
   }
 
   /**
-    * 消费多个tokens
+    * Consume multiple tokens
     */
   function ConsumeMultipleTokens(tokens: Token.Collection, tokensToConsume: set<Token.TokenId>): Token.Collection
     requires forall id :: id in tokensToConsume ==> id in tokens.tokens && tokens.tokens[id].status == Active
     requires ValidTokenCollection(tokens)
     ensures ValidTokenCollection(ConsumeMultipleTokens(tokens, tokensToConsume))
     ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
-            // 不变式1：被消费的tokens状态变为Consumed
+            // invariant 1: the consumed tokens are changed to Consumed
             forall id :: id in tokensToConsume ==> 
               id in result.tokens && result.tokens[id].status == Consumed
     ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
-            // 不变式2：未被消费的tokens保持原状态
+            // invariant 2: the tokens that are not consumed keep their original status
             forall id :: id in tokens.tokens && id !in tokensToConsume ==> 
               id in result.tokens && result.tokens[id] == tokens.tokens[id]
     ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
-            // 不变式3：token集合大小不变（consume不删除，只改状态）
+            // invariant 3: the size of the token collection does not change (consume does not delete, only change status)
             |result.tokens| == |tokens.tokens|
     ensures var result := ConsumeMultipleTokens(tokens, tokensToConsume);
-            // 不变式4：关键性质 - 消费掉某位置所有active tokens后，该位置无active tokens
+            // invariant 4: the key property - after consuming all active tokens at a location, there are no active tokens at that location
             forall location :: 
               (forall id :: id in GetActiveTokensAtLocation(tokens, location) ==> id in tokensToConsume) ==>
               GetActiveTokensAtLocation(result, location) == {}
@@ -783,17 +788,13 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
       var tokenId := Token.PickOne(tokensToConsume);
       var remainingTokens := tokensToConsume - {tokenId};
       
-      // 关键断言：验证ConsumeToken的前置条件
       assert tokenId in tokens.tokens && tokens.tokens[tokenId].status == Active;
       
       var tokensAfterOne := Token.ConsumeToken(tokens, tokenId);
       
-      // 递归不变式辅助断言
       assert tokenId !in remainingTokens;
       assert forall id :: id in remainingTokens ==> 
                id in tokensAfterOne.tokens && tokensAfterOne.tokens[id].status == Active;
-      
-      // 证明单个消费后的性质
       assert tokensAfterOne.tokens[tokenId].status == Consumed;
       assert forall id :: id in tokens.tokens && id != tokenId ==> 
                tokensAfterOne.tokens[id] == tokens.tokens[id];
@@ -814,7 +815,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
   }
 
   /**
-    * 创建进入事件列
+    * Create enter events
     */
   function CreateEnterEvents(
     tokenIds: set<Token.TokenId>,
@@ -823,12 +824,12 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
   ): seq<ExecutionEvent>
     requires forall flowId :: flowId in flows ==> flowId in flowDefinitions
   {
-    // 简化实现：返回空序列，后续可以完善
+    // simplified implementation: return empty sequence, can be improved later
     []
   }
 
   /**
-    * 验证gateway执行的前置条件
+    * Validate the preconditions for gateway execution
     */
   predicate CanExecuteGateway(state: ExecutingState, tokenId: Token.TokenId)
   {
@@ -838,7 +839,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
   }
 
   /**
-    * 验证parallel fork的前置条件
+    * Validate the preconditions for parallel fork
     */
   predicate CanExecuteParallelFork(state: ExecutingState, tokenId: Token.TokenId, outgoingFlows: set<string>)
   {
@@ -848,7 +849,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     forall flowId :: flowId in outgoingFlows ==> flowId in state.process.processDefinition.flows
   }
   /**
-    * 计算活跃token数量
+    * Count the number of active tokens
     */
   function CountActiveTokens(state: State): nat
     requires state.Running?
@@ -857,7 +858,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
   }
 
   /**
-    * 获取指定位置的所有active tokens
+    * Get all active tokens at a specific location
     */
   function GetActiveTokensAtLocation(tokens: Token.Collection, location: string): set<Token.TokenId>
   {
@@ -880,11 +881,11 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     ensures ValidState(ExecuteParallelJoin(state, tokenId))
     ensures var result := ExecuteParallelJoin(state, tokenId);
             result.Running? ==> (
-              // 1. Join位置不再有active tokens
+              // 1. Join location has no active tokens
               var joinLocation := state.process.tokenCollection.tokens[tokenId].location;
               GetActiveTokensAtLocation(result.process.tokenCollection, joinLocation) == {} &&
               
-              // 2. 下游位置有新的active token
+              // 2. There is a new active token at the downstream location
               (var currentNode := state.process.processDefinition.nodes[joinLocation];
                if |currentNode.outgoing| == 1 then
                  var outgoingFlow := Token.PickOne(currentNode.outgoing);
@@ -895,7 +896,7 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
                  else false
                else false) &&
               
-              // 3. Token数量减少：原来有多个tokens，现在只有一个
+              // 3. The number of tokens decreases: there were multiple tokens, now there is only one
               (var joinLocation := state.process.tokenCollection.tokens[tokenId].location;
                var tokensAtJoinBefore := GetActiveTokensAtLocation(state.process.tokenCollection, joinLocation);
                |GetActiveTokens(result.process.tokenCollection)| == 
@@ -907,35 +908,33 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
     var currentNode := process.processDefinition.nodes[token.location];
     var location := token.location;
 
-    // 获取该位置的所有active tokens（所有分支的tokens）
+    // get all active tokens at the location (all tokens from all branches)
     var tokensAtLocation := GetActiveTokensAtLocation(process.tokenCollection, location);
 
-    // 消费所有到达的tokens
+    // consume all arriving tokens
     var tokensAfterConsume := Token.ConsumeTokens(process.tokenCollection, tokensAtLocation);
 
-    // 利用ConsumeMultipleTokens的不变式4：消费后该位置无active tokens
+    // use the invariant 4 of ConsumeMultipleTokens: after consuming, there are no active tokens at the location
     assert GetActiveTokensAtLocation(tokensAfterConsume, location) == {};
 
-    // 创建新token在下游（parallel join应该只有一个输出）
+    // create a new token at the downstream location (parallel join should have exactly one output)
     if |currentNode.outgoing| == 1 then
       var outgoingFlow := Token.PickOne(currentNode.outgoing);
       if outgoingFlow in process.processDefinition.flows then
         var nextNodeId := process.processDefinition.flows[outgoingFlow].targetRef;
-        // 关键断言：nextNodeId的位置都在processDefinition.nodes中
+        // assert nextNodeId is in processDefinition.nodes
         
-        // 关键断言：parallel join的输出不应指向自己（BPMN语义要求）
-        // 这确保CreateToken不会在原位置创建新token
+        // assert parallel join's output should not point to itself (BPMN semantic requirement)
+        // this ensures CreateToken does not create a new token at the original location
         assume nextNodeId != location;
         
         var (finalTokens, newTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
 
-        // 更新执行历史
         var newHistory := process.executionHistory + [
                             Event(0, location, NodeExited, tokenId, Variables.EmptyVariables()),
                             Event(1, nextNodeId, NodeEntered, newTokenId, Variables.EmptyVariables())
                           ];
 
-        // 更新context
         var updatedContext := ExecutionContext.CreateConsistentContext(
                                 finalTokens,
                                 location,
@@ -976,23 +975,23 @@ assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得�
         assert forall tokenId :: tokenId in GetActiveTokens(result.process.tokenCollection) ==>
                         result.process.tokenCollection.tokens[tokenId].location in result.process.processDefinition.nodes;
         
-        // 4. Token数量推理：建立分步证明链
+        // 4. Token number inference: establish a step-by-step proof chain
         
-        // Step 1: 调用ConsumeTokens的lemma来证明消费操作的效果
+        // Step 1: call ConsumeTokens's lemma to prove the effect of the consume operation
         Token.ConsumeTokensReducesActiveTokens(process.tokenCollection, tokensAtLocation);
         assert |GetActiveTokens(tokensAfterConsume)| == |GetActiveTokens(process.tokenCollection)| - |tokensAtLocation|;
         
-        // Step 2: 调用CreateToken的lemma来证明创建操作的效果  
+        // Step 2: call CreateToken's lemma to prove the effect of the create operation  
         Token.CreateTokenPreservesActiveTokens(tokensAfterConsume, nextNodeId);
         assert |GetActiveTokens(finalTokens)| == |GetActiveTokens(tokensAfterConsume)| + 1;
         
-        // Step 3: 数学推理 - 结合两步
+        // Step 3: mathematical inference - combine two steps
         assert |GetActiveTokens(finalTokens)| == |GetActiveTokens(process.tokenCollection)| - |tokensAtLocation| + 1;
         
-        // Step 4: result的tokenCollection就是finalTokens
+        // Step 4: the tokenCollection of result is finalTokens
         assert result.process.tokenCollection == finalTokens;
         
-        // Step 5: 最终结论
+        // Step 5: the final conclusion
         assert |GetActiveTokens(result.process.tokenCollection)| == 
                |GetActiveTokens(process.tokenCollection)| - |tokensAtLocation| + 1;
 
@@ -1061,4 +1060,512 @@ lemma ParallelForkCreatesExactTokens(
   */
  
 
+  /**
+    * Read task input variables to local variable mapping
+    */
+  function ReadTaskInputs(globalVars: Variables.VariableMap, inputVars: seq<string>): Variables.VariableMap
+    decreases |inputVars|
+  {
+    if |inputVars| == 0 then
+      Variables.EmptyVariables()
+    else
+      var varName := inputVars[0];
+      var remainingVars := inputVars[1..];
+      var localVars := ReadTaskInputs(globalVars, remainingVars);
+      if varName in globalVars then
+        Variables.SetVariable(localVars, varName, globalVars[varName])
+      else
+        localVars
+  }
+
+  /**
+    * Write task output variables to global variables
+    */
+  function WriteTaskOutputs(globalVars: Variables.VariableMap, localVars: Variables.VariableMap, outputVars: seq<string>): Variables.VariableMap
+    decreases |outputVars|
+  {
+    if |outputVars| == 0 then
+      globalVars
+    else
+      var varName := outputVars[0];
+      var remainingVars := outputVars[1..];
+      var updatedGlobals := WriteTaskOutputs(globalVars, localVars, remainingVars);
+      if varName in localVars then
+        Variables.SetVariable(updatedGlobals, varName, localVars[varName])
+      else
+        updatedGlobals
+  }
+
+  /**
+    * 模拟任务执行并产生输出（简化版本）
+    */
+  function SimulateTaskExecution(taskType: TaskType, inputs: Variables.VariableMap, taskId: string): Variables.VariableMap
+  {
+    match taskType {
+      case UserTask =>
+        // user task: simulate user input, simply set a completion flag
+        Variables.SetVariable(inputs, taskId + "_completed", Variables.BoolValue(true))
+      case ServiceTask =>
+        // service task: simulate service call result
+        Variables.SetVariable(inputs, taskId + "_result", Variables.StringValue("service_success"))
+      case ScriptTask =>
+        // script task: simulate script execution
+        Variables.SetVariable(inputs, taskId + "_script_output", Variables.IntValue(42))
+      case ManualTask =>
+        // manual task: simulate manual operation completion
+        Variables.SetVariable(inputs, taskId + "_manual_done", Variables.BoolValue(true))
+      case BusinessRuleTask =>
+        // 业务规则任务：模拟规则评估结果
+        Variables.SetVariable(inputs, taskId + "_rule_result", Variables.StringValue("rule_passed"))
+    }
+  }
+
+  /**
+    * 通用的任务执行函数，处理数据输入输出
+    */
+  function ExecuteTaskWithData(state: ExecutingState, tokenId: Token.TokenId, taskType: TaskType, data: Option<TaskData>): State
+    requires tokenId in GetActiveTokens(state.process.tokenCollection)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
+    ensures ValidState(ExecuteTaskWithData(state, tokenId, taskType, data))
+  {
+    var process := state.process;
+    var token := process.tokenCollection.tokens[tokenId];
+    var currentNode := process.processDefinition.nodes[token.location];
+
+    // 获取输出流
+    var outgoingFlows := currentNode.outgoing;
+    if |outgoingFlows| == 1 then
+      var flowId := Token.PickOne(outgoingFlows);
+      if flowId in process.processDefinition.flows then
+        var nextNodeId := process.processDefinition.flows[flowId].targetRef;
+        
+        // 处理数据输入输出
+        var updatedGlobalVars := 
+          if data.Some? then
+            var taskData := data.Unwrap();
+            // 1. 读取输入变量到本地环境
+            var localInputs := ReadTaskInputs(process.globalVariables, taskData.inputVariables);
+            // 2. 模拟任务执行
+            var localOutputs := SimulateTaskExecution(taskType, localInputs, token.location);
+            // 3. 写入输出变量到全局环境
+            WriteTaskOutputs(process.globalVariables, localOutputs, taskData.outputVariables)
+          else
+            process.globalVariables;
+
+            // 消费当前token，创建下一个token
+    assert process.tokenCollection.tokens[tokenId].status == Active;
+    var tokensAfterConsume := Token.ConsumeToken(process.tokenCollection, tokenId);
+    var (tokensWithNext, nextTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
+
+        var newHistory := process.executionHistory + [
+                            Event(0, token.location, NodeExited, tokenId, Variables.EmptyVariables()),
+                            Event(1, nextNodeId, NodeEntered, nextTokenId, Variables.EmptyVariables())
+                          ];
+
+        var updatedContext := ExecutionContext.CreateConsistentContext(
+                                tokensWithNext,
+                                nextNodeId,
+                                process.context.executionStep + 1
+                              );
+
+        var updatedProcess := Process(
+                                processId := process.processId,
+                                tokenCollection := tokensWithNext,
+                                globalVariables := updatedGlobalVars,  // 使用更新后的全局变量
+                                processDefinition := process.processDefinition,
+                                executionHistory := newHistory,
+                                context := updatedContext
+                              );
+
+        Running(updatedProcess)
+      else
+        BPMNState.Error(process, FlowError(flowId, "Flow not found in process definition"))
+    else
+      BPMNState.Error(process, ExecutionError(token.location, "Task should have exactly one outgoing flow"))
+  }
+
+  // specific task execution functions (now all delegated to the generic function)
+  function ExecuteUserTaskWithData(state: ExecutingState, tokenId: Token.TokenId, data: Option<TaskData>): State
+    requires tokenId in GetActiveTokens(state.process.tokenCollection)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    ensures ValidState(ExecuteUserTaskWithData(state, tokenId, data))
+  {
+    ExecuteTaskWithData(state, tokenId, UserTask, data)
+  }
+
+  function ExecuteServiceTaskWithData(state: ExecutingState, tokenId: Token.TokenId, data: Option<TaskData>): State
+    requires tokenId in GetActiveTokens(state.process.tokenCollection)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    ensures ValidState(ExecuteServiceTaskWithData(state, tokenId, data))
+  {
+    ExecuteTaskWithData(state, tokenId, ServiceTask, data)
+  }
+
+  function ExecuteManualTaskWithData(state: ExecutingState, tokenId: Token.TokenId, data: Option<TaskData>): State
+    requires tokenId in GetActiveTokens(state.process.tokenCollection)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires ValidTokenCollection(state.process.tokenCollection)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    ensures ValidState(ExecuteManualTaskWithData(state, tokenId, data))
+  {
+    ExecuteTaskWithData(state, tokenId, ManualTask, data)
+  }
+
+  /**
+    * Data Conflict Detection Functions
+    */
+
+  /**
+    * Get variable access information for a token
+    */
+  function GetTokenVariableAccess(state: ExecutingState, tokenId: Token.TokenId): seq<BPMNState.VariableAccess>
+    requires ValidState(state)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+  {
+    var process := state.process;
+    var token := process.tokenCollection.tokens[tokenId];
+    var currentNode := process.processDefinition.nodes[token.location];
+    
+    match currentNode.nodeType {
+      case Task(taskType, data) =>
+        if data.Some? then
+          var taskData := data.Unwrap();
+          var readAccess := seq(|taskData.inputVariables|, i requires 0 <= i < |taskData.inputVariables| => 
+                               BPMNState.VarAccess(taskData.inputVariables[i], BPMNState.Read));
+          var writeAccess := seq(|taskData.outputVariables|, i requires 0 <= i < |taskData.outputVariables| => 
+                                BPMNState.VarAccess(taskData.outputVariables[i], BPMNState.Write));
+          readAccess + writeAccess
+        else
+          []
+      case _ => []  // 其他节点类型不访问变量
+    }
+  }
+
+  /**
+    * Detect conflicts between two tokens
+    */
+  function DetectConflictBetweenTokens(
+    token1: Token.TokenId,
+    access1: seq<BPMNState.VariableAccess>,
+    token2: Token.TokenId,
+    access2: seq<BPMNState.VariableAccess>
+  ): seq<BPMNState.DataConflict>
+  {
+    if |access1| == 0 || |access2| == 0 then []
+    else 
+      DetectConflictHelper(token1, access1, token2, access2, 0, 0, [])
+  }
+
+  function DetectConflictHelper(
+    token1: Token.TokenId,
+    access1: seq<BPMNState.VariableAccess>,
+    token2: Token.TokenId,
+    access2: seq<BPMNState.VariableAccess>,
+    i: nat,
+    j: nat,
+    acc: seq<BPMNState.DataConflict>
+  ): seq<BPMNState.DataConflict>
+    requires 0 <= i <= |access1|
+    requires 0 <= j <= |access2|
+    decreases |access1| - i, |access2| - j
+  {
+    if i >= |access1| then acc
+    else if j >= |access2| then DetectConflictHelper(token1, access1, token2, access2, i + 1, 0, acc)
+    else
+      var newAcc := if access1[i].variable == access2[j].variable &&
+                       BPMNState.HasConflict(access1[i].accessType, access2[j].accessType) then
+                      acc + [BPMNState.CreateDataConflict(access1[i].variable, access1[i].accessType, 
+                                                          access2[j].accessType, token1, token2)]
+                    else acc;
+      DetectConflictHelper(token1, access1, token2, access2, i, j + 1, newAcc)
+  }
+
+  /**
+    * Detect conflicts between one token and a list of other tokens
+    */
+  function DetectConflictsWithTokens(
+    token: Token.TokenId,
+    tokenAccess: seq<BPMNState.VariableAccess>,
+    otherTokens: seq<Token.TokenId>,
+    state: ExecutingState
+  ): seq<BPMNState.DataConflict>
+    requires ValidState(state)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    requires forall tokenId :: tokenId in otherTokens ==>
+               tokenId in state.process.tokenCollection.tokens &&
+               state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    decreases |otherTokens|
+  {
+    if |otherTokens| == 0 then
+      []
+    else
+      var firstOther := Seq.First(otherTokens);
+      var restOthers := Seq.DropFirst(otherTokens);
+      var firstOtherAccess := GetTokenVariableAccess(state, firstOther);
+      var conflictsWithFirst := DetectConflictBetweenTokens(token, tokenAccess, firstOther, firstOtherAccess);
+      var conflictsWithRest := DetectConflictsWithTokens(token, tokenAccess, restOthers, state);
+      conflictsWithFirst + conflictsWithRest
+  }
+
+  /**
+    * Filter tokens to remove those with data conflicts
+    * Returns (conflict-free tokens, detected conflicts)
+    */
+  function FilterConflictFreeTokens(
+    queue: seq<Token.TokenId>,
+    state: ExecutingState
+  ): (seq<Token.TokenId>, seq<BPMNState.DataConflict>)
+    requires ValidState(state)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    requires forall tokenId :: tokenId in queue ==>
+               tokenId in state.process.tokenCollection.tokens &&
+               state.process.tokenCollection.tokens[tokenId].status == Active &&
+               state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    ensures var (conflictFree, conflicts) := FilterConflictFreeTokens(queue, state);
+            forall tokenId :: tokenId in conflictFree ==> tokenId in queue
+    ensures var (conflictFree, conflicts) := FilterConflictFreeTokens(queue, state);
+            |conflictFree| <= |queue|
+    decreases |queue|
+  {
+    if |queue| == 0 then
+      ([], [])
+    else if |queue| == 1 then
+      ([Seq.First(queue)], [])
+    else
+      var firstToken := Seq.First(queue);
+      var restQueue := Seq.DropFirst(queue);
+      
+      var (restConflictFree, restConflicts) := FilterConflictFreeTokens(restQueue, state);
+
+      var firstAccess := GetTokenVariableAccess(state, firstToken);
+      var conflictsWithFirst := DetectConflictsWithTokens(firstToken, firstAccess, restConflictFree, state);
+      
+      if |conflictsWithFirst| > 0 then
+        (restConflictFree, restConflicts + conflictsWithFirst)
+      else
+        ([firstToken] + restConflictFree, restConflicts)
+  }
+
+  /**
+    * Get tokens from execution queue that can be executed without data conflicts
+    */
+  function GetConflictFreeTokensFromQueue(state: ExecutingState): (seq<Token.TokenId>, seq<BPMNState.DataConflict>)
+    requires ValidState(state)
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    ensures var (conflictFree, conflicts) := GetConflictFreeTokensFromQueue(state);
+            forall tokenId :: tokenId in conflictFree ==> tokenId in state.process.context.executionQueue
+    ensures var (conflictFree, conflicts) := GetConflictFreeTokensFromQueue(state);
+            forall tokenId :: tokenId in conflictFree ==>
+              tokenId in state.process.tokenCollection.tokens &&
+              state.process.tokenCollection.tokens[tokenId].status == Active &&
+              CanExecuteTokenImmediately(state, tokenId)
+  {
+    var executableTokens := GetExecutableTokensFromQueue(state);
+    FilterConflictFreeTokens(executableTokens, state)
+  }
+
+  /**
+    * Exclusive Gateway Functions
+    */
+
+  /**
+    * Execute exclusive fork - evaluate conditions and choose one flow
+    */
+  function ExecuteExclusiveFork(
+    state: ExecutingState, 
+    tokenId: Token.TokenId, 
+    outgoingFlows: set<string>,
+    defaultFlow: Option<string>
+  ): State
+  
+    requires tokenId in state.process.tokenCollection.tokens
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    requires |outgoingFlows| > 1
+    requires defaultFlow.Some? ==> defaultFlow.Unwrap() in outgoingFlows
+    requires forall flowId :: flowId in outgoingFlows ==> flowId in state.process.processDefinition.flows
+    requires  state.process.tokenCollection.tokens[tokenId].status == Active
+    ensures ValidState(ExecuteExclusiveFork(state, tokenId, outgoingFlows, defaultFlow))
+    requires ValidTokenCollection(state.process.tokenCollection)
+  {
+    var process := state.process;
+    assert defaultFlow.Some? ==> defaultFlow.Unwrap() in outgoingFlows;
+    var selectedFlow := EvaluateExclusiveConditions(state, outgoingFlows, defaultFlow);
+    
+    match selectedFlow {
+      case Some(flowId) =>
+        assert flowId in outgoingFlows;
+        assert forall fId :: fId in outgoingFlows ==> fId in process.processDefinition.flows;
+        assert flowId in process.processDefinition.flows;
+        ExecuteSingleFlow(state, tokenId, flowId)
+      case None =>
+        // 没有任何流被选中（包括默认流），这是一个错误
+        BPMNState.Error(process, ExecutionError(state.process.tokenCollection.tokens[tokenId].location, 
+                                               "No flow selected in exclusive gateway"))
+    }
+  }
+
+  /**
+    * Execute exclusive merge - simple merge, no synchronization needed
+    */
+  function ExecuteExclusiveMerge(state: ExecutingState, tokenId: Token.TokenId): State
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires state.process.tokenCollection.tokens[tokenId].location in state.process.processDefinition.nodes
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    requires ValidTokenCollection(state.process.tokenCollection)
+    ensures ValidState(ExecuteExclusiveMerge(state, tokenId))
+  {
+    ExecuteSimplePassThrough(state, tokenId)
+  }
+
+  /**
+    * Evaluate conditions for exclusive gateway and return selected flow
+    * 接口设计：先定义函数签名，具体实现可以后续完善
+    */
+  function EvaluateExclusiveConditions(
+    state: ExecutingState,
+    outgoingFlows: set<string>,
+    defaultFlow: Option<string>
+  ): Option<string>
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires forall flowId :: flowId in outgoingFlows ==> flowId in state.process.processDefinition.flows
+    requires defaultFlow.Some? ==> defaultFlow.Unwrap() in outgoingFlows
+    ensures var result := EvaluateExclusiveConditions(state, outgoingFlows, defaultFlow);
+            result.Some? ==> result.Unwrap() in outgoingFlows
+  {
+    // TODO: 实现条件评估逻辑
+    // 1. 遍历所有非默认流，评估其条件
+    // 2. 返回第一个满足条件的流
+    // 3. 如果都不满足，返回默认流
+    // 4. 如果没有默认流且都不满足，返回None
+    
+    // 临时实现：优先选择第一个有条件的流，否则选择默认流
+    var conditionalFlows := GetConditionalFlows(outgoingFlows, state.process.processDefinition.flows);
+    if |conditionalFlows| > 0 then
+      var firstFlow := Token.PickOne(conditionalFlows);
+      if EvaluateFlowCondition(state, firstFlow) then
+        Some(firstFlow)
+      else if defaultFlow.Some? then
+        defaultFlow
+      else
+        None
+    else if defaultFlow.Some? then
+      defaultFlow
+    else
+      None
+  }
+
+  /**
+    * Get flows that have conditions (non-default flows)
+    */
+  function GetConditionalFlows(
+    flows: set<string>,
+    flowDefinitions: map<string, SequenceFlow>
+  ): set<string>
+    requires forall flowId :: flowId in flows ==> flowId in flowDefinitions
+  {
+    set flowId | flowId in flows && flowDefinitions[flowId].condition.Some?
+  }
+
+  /**
+    * Evaluate a single flow condition
+    * 接口设计：条件评估的核心函数
+    */
+  function EvaluateFlowCondition(state: ExecutingState, flowId: string): bool
+    requires flowId in state.process.processDefinition.flows
+  {
+    var flow := state.process.processDefinition.flows[flowId];
+    match flow.condition {
+      case None => true  // 无条件，总是满足
+      case Some(conditionExpr) =>
+        // TODO: 实现具体的条件表达式评估
+        // 这里需要解析conditionExpr并根据当前变量状态评估
+        EvaluateConditionExpression(state, conditionExpr)
+    }
+  }
+
+  /**
+    * Evaluate condition expression against current variable state
+    * 接口设计：条件表达式评估引擎
+    */
+  function EvaluateConditionExpression(state: ExecutingState, expression: string): bool
+  {
+    // TODO: 实现条件表达式解析和评估
+    // 可能的条件格式：
+    // - "variable == value"
+    // - "variable > 10"
+    // - "status == 'approved'"
+    // - 复合条件等
+    
+    // 临时实现：总是返回true
+    true
+  }
+
+  /**
+    * Execute a single flow (used by exclusive gateway)
+    */
+  function ExecuteSingleFlow(state: ExecutingState, tokenId: Token.TokenId, flowId: string): State
+    requires tokenId in state.process.tokenCollection.tokens
+    requires state.process.tokenCollection.tokens[tokenId].status == Active
+    requires flowId in state.process.processDefinition.flows
+    requires ValidProcessDefinition(state.process.processDefinition)
+    requires ValidProcessState(state.process)
+    requires ValidTokenCollection(state.process.tokenCollection)
+    ensures ValidState(ExecuteSingleFlow(state, tokenId, flowId))
+  {
+    var process := state.process;
+    var flow := process.processDefinition.flows[flowId];
+    var nextNodeId := flow.targetRef;
+    
+    // 消费当前token，创建下一个token
+    var tokensAfterConsume := Token.ConsumeToken(process.tokenCollection, tokenId);
+    var (tokensWithNext, nextTokenId) := Token.CreateToken(tokensAfterConsume, nextNodeId);
+    
+    var token := process.tokenCollection.tokens[tokenId];
+    var newHistory := process.executionHistory + [
+                        Event(0, token.location, NodeExited, tokenId, Variables.EmptyVariables()),
+                        Event(1, nextNodeId, NodeEntered, nextTokenId, Variables.EmptyVariables())
+                      ];
+    
+    var updatedContext := ExecutionContext.CreateConsistentContext(
+                            tokensWithNext,
+                            nextNodeId,
+                            process.context.executionStep + 1
+                          );
+    
+    Running(Process(
+              processId := process.processId,
+              tokenCollection := tokensWithNext,
+              globalVariables := process.globalVariables,
+              processDefinition := process.processDefinition,
+              executionHistory := newHistory,
+              context := updatedContext
+            ))
+  }
 }

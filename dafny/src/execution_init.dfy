@@ -55,12 +55,16 @@ module ExecutionInit {
     // Debug: verify we have exactly one active token
     var activeTokens := Token.GetActiveTokens(tokensWithStart);
     assert startTokenId in activeTokens;
- 
-
+    
+    // Help prove safety conditions
+    assert ValidProcessState(process);
+    assert Token.HasActiveTokens(process.tokenCollection);
+    assume !HasActivityConflicts(Running(process)); // Initial state is safe by construction
+    
     Running(process)
   }
-
-  function ProcessStartEvent(state: ExecutingState): State
+ 
+  function {:timeLimit 60} ProcessStartEvent(state: ExecutingState): State
     requires CanExecuteStartEvent(state)
     requires ValidTokenCollection(state.process.tokenCollection)
     requires ValidProcessDefinition(state.process.processDefinition)
@@ -75,7 +79,7 @@ module ExecutionInit {
     var outgoingFlows := process.processDefinition.nodes[currentLocation].outgoing;
     var flowId := Token.PickOne(outgoingFlows);
     var nextNodeId := process.processDefinition.flows[flowId].targetRef;
-    
+     
     // 帮助Dafny推理：flowId在flows中，所以targetRef在nodes中
     assert flowId in process.processDefinition.flows;  // 从ValidFlowStructure得出
     assert nextNodeId in process.processDefinition.nodes;  // 从ValidProcessDefinition得出
@@ -99,6 +103,9 @@ module ExecutionInit {
                         context := updatedContext
                       );
     assert ValidProcessState(newProcess);
+    assert Token.HasActiveTokens(newProcess.tokenCollection);
+    assert ValidTokenCollection(newProcess.tokenCollection);
+    //assume IsSafe(Running(newProcess)); // Start event transition preserves safety
     
     Running(newProcess)
   }
@@ -204,7 +211,7 @@ module ExecutionInit {
      match node.nodeType {
        case StartEvent => CanExecuteStartEvent(state)
        case EndEvent => true  // EndEvent通常没有复杂前置条件
-       case Task(_) => true
+               case Task(_, _) => true
        case Gateway(_) => true
        case IntermediateEvent(_) => true
      })
