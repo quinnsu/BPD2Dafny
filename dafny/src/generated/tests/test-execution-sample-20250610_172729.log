@@ -1,0 +1,372 @@
+======================================== 
+BPMN Test Execution Log - SAMPLE (3 FILES) 
+Timestamp: Tue 06/10/2025 17:27:29.22 
+======================================== 
+ 
+ 
+======================================== 
+Processing 1/3: parsed_models_03.json 
+======================================== 
+ 
+[STEP 1] Converting JSON model to test file... 
+Command: node json-to-process.js tests/parsed_models_03.json 
+---------------------------------------- 
+process name: Dispatch
+total elements: 34
+element classification statistics:
+   - start event: 1
+   - end event: 1
+   - task: 8
+   - gateway: 6
+   - sequence flow: 18
+   string cleaning: "Fill in parcel ticket
+" -> "Fill in parcel ticket"
+   default flow: sid-52F610CD-A261-4BB5-A3D1-840268F48695 -> sid-11B145B9-3228-4762-9D5D-A911D052AC63
+   default flow: Large amounts? -> sid-05BACD31-C092-4895-9C31-D6D2C29A2745
+   default flow: sid-46055144-1DB1-4243-96C4-CDA9DE496714 -> sid-6A99AEF8-1D5D-4F33-9544-1E15AD652F1B
+   default flow: Insurance required? -> sid-E8109169-4E50-4947-BAC5-6BE6212550B5
+
+conversion completed
+generated test file: tests\generated-parsed_models_03.js
+run command: node tests\generated-parsed_models_03.js
+[STEP 1] Conversion completed successfully. 
+ 
+[STEP 2] Running generated test file... 
+Command: node tests/generated-parsed_models_03.js 
+---------------------------------------- 
+Starting execution of auto-generated BPMN process test...
+Module imported successfully, starting to create process definition...
+process definition created successfully
+node count: 16, flow count: 18
+validate process definition...
+   - process definition validity: true
+initialize execution state...
+execution state initialized: Running
+   - active token count: 1
+execute process steps...
+
+--- Step 1 ---
+current token location: sid-DBBCD1E8-E337-4FA9-BFAD-952A6E8E2335
+current node name: Goods to be shipped
+current node type: ProcessDefinition.NodeType.StartEvent
+▶️  System State: Running
+step executed successfully
+
+--- Step 2 ---
+current token location: sid-DFEC6BCB-534B-4189-9E51-D00D5CE2938C
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 3 ---
+current token location: sid-9884DD2F-8B86-46EA-B684-F7668796552F
+current node name: Clarify who to ship
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 4 ---
+current token location: sid-7AE9627E-AB9E-4736-9290-C61A0FF44E98
+current node name: Pack goods
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 5 ---
+current token location: sid-20E635E9-6D82-4DA3-AB8B-DE19EB423C34
+current node name: Large amounts?
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ExclusiveGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 6 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 7 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 8 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 9 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 10 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 11 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 12 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 13 ---
+current token location: sid-FCC94409-33CE-4CBC-9DBB-0F044280F1E8
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 14 ---
+current token location: sid-F84128CF-AAC2-45E5-9A21-6C83CAA402C0
+current node name: Make goods available
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 15 ---
+current token location: sid-0289ED05-99AA-4E7A-BE39-48140BEFE365
+current node name: Pick up goods
+current node type: ProcessDefinition.NodeType.EndEvent
+✅ System State: Completed
+process executed successfully
+process execution ended
+[STEP 2] Test execution completed successfully. 
+---------------------------------------- 
+ 
+======================================== 
+Processing 2/3: parsed_models_04.json 
+======================================== 
+ 
+[STEP 1] Converting JSON model to test file... 
+Command: node json-to-process.js tests/parsed_models_04.json 
+---------------------------------------- 
+process name: Dispatch of Goods
+total elements: 32
+element classification statistics:
+   - start event: 1
+   - end event: 1
+   - task: 8
+   - gateway: 5
+   - sequence flow: 17
+   default flow: sid-892F0E47-DB85-4345-90AF-6BEA56A3AE91 -> sid-0F8B1BD9-533F-4322-AA64-A7F2FFD40D9A
+   default flow: sid-99AB4039-75C1-4F3A-88B1-16BBA3658B4E -> sid-FE6112BC-0B6A-4203-A7CE-D99766830BFE
+   default flow: sid-DFAD901A-E765-4AD2-8A09-6248E1F70F17 -> sid-4C06A026-B825-4EED-A877-80E22E9AB5B7
+
+conversion completed
+generated test file: tests\generated-parsed_models_04.js
+run command: node tests\generated-parsed_models_04.js
+[STEP 1] Conversion completed successfully. 
+ 
+[STEP 2] Running generated test file... 
+Command: node tests/generated-parsed_models_04.js 
+---------------------------------------- 
+Starting execution of auto-generated BPMN process test...
+Module imported successfully, starting to create process definition...
+process definition created successfully
+node count: 15, flow count: 17
+validate process definition...
+   - process definition validity: true
+initialize execution state...
+execution state initialized: Running
+   - active token count: 1
+execute process steps...
+
+--- Step 1 ---
+current token location: sid-30C91BB1-32DE-418B-BC16-610A848F4D45
+current node name: Ship Goods
+current node type: ProcessDefinition.NodeType.StartEvent
+▶️  System State: Running
+step executed successfully
+
+--- Step 2 ---
+current token location: sid-7E169A77-65F2-4F78-83ED-9D15ED75BC23
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 3 ---
+current token location: sid-E70DB6F0-33A3-48B9-B0DF-70B770FA75D4
+current node name: Clarify who will do the shipping
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 4 ---
+current token location: sid-8EE210B0-5BF1-4C67-814C-3A06D93B952D
+current node name: Package Goods
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 5 ---
+current token location: sid-892F0E47-DB85-4345-90AF-6BEA56A3AE91
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ExclusiveGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 6 ---
+current token location: sid-4F0F5203-440A-4752-868C-9FFA908B7D25
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 7 ---
+current token location: sid-4F0F5203-440A-4752-868C-9FFA908B7D25
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 8 ---
+current token location: sid-4F0F5203-440A-4752-868C-9FFA908B7D25
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 9 ---
+current token location: sid-4F0F5203-440A-4752-868C-9FFA908B7D25
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 10 ---
+current token location: sid-5D10824C-4AA8-4872-8FDA-CAC1B992801E
+current node name: Pickup Packaged Goods
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 11 ---
+current token location: sid-C1EBCE10-BB25-4F7B-A1C1-E66D3A004034
+current node name: 
+current node type: ProcessDefinition.NodeType.EndEvent
+✅ System State: Completed
+process executed successfully
+process execution ended
+[STEP 2] Test execution completed successfully. 
+---------------------------------------- 
+ 
+======================================== 
+Processing 3/3: parsed_models_05.json 
+======================================== 
+ 
+[STEP 1] Converting JSON model to test file... 
+Command: node json-to-process.js tests/parsed_models_05.json 
+---------------------------------------- 
+process name: Händler/ hardware company
+total elements: 31
+element classification statistics:
+   - start event: 1
+   - end event: 1
+   - task: 6
+   - gateway: 6
+   - sequence flow: 17
+   string cleaning: "insurance
+ needed?" -> "insurance needed?"
+   default flow: insurance needed? -> sid-3AA350C2-8758-409B-AAAF-778D01BEFEF1
+   default flow: sid-934C009B-B440-469A-AC20-D7C0A1334813 -> sid-510200FC-0DFC-4993-AF22-428AFD4B2BD1
+   default flow: sid-A81426CF-524E-43B6-A62A-5DA9D6D23E42 -> sid-02A5144B-5929-4CE8-860C-BE117558E8A4
+
+conversion completed
+generated test file: tests\generated-parsed_models_05.js
+run command: node tests\generated-parsed_models_05.js
+[STEP 1] Conversion completed successfully. 
+ 
+[STEP 2] Running generated test file... 
+Command: node tests/generated-parsed_models_05.js 
+---------------------------------------- 
+Starting execution of auto-generated BPMN process test...
+Module imported successfully, starting to create process definition...
+process definition created successfully
+node count: 14, flow count: 17
+validate process definition...
+   - process definition validity: true
+initialize execution state...
+execution state initialized: Running
+   - active token count: 1
+execute process steps...
+
+--- Step 1 ---
+current token location: sid-81396BE0-333B-4B48-9F22-818753F83903
+current node name: shipment needed
+current node type: ProcessDefinition.NodeType.StartEvent
+▶️  System State: Running
+step executed successfully
+
+--- Step 2 ---
+current token location: sid-A81426CF-524E-43B6-A62A-5DA9D6D23E42
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ExclusiveGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 3 ---
+current token location: sid-2B40BBBE-F2F2-4850-A0AE-CFBEC866ADB0
+current node name: order 3 offers
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 4 ---
+current token location: sid-7C5EF6A6-7039-451D-A2D6-CBDD2746F318
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+▶️  System State: Running
+step executed successfully
+
+--- Step 5 ---
+current token location: sid-CF2AF2D0-293E-4FB4-A9C9-F5B86F39D2EB
+current node name: select one offer
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 6 ---
+current token location: sid-DF9B66BC-13F2-47AB-83D3-519A2E3BEF95
+current node name: pack goods
+current node type: ProcessDefinition.NodeType.Task(ProcessDefinition.TaskType.UserTask, Optional.Option.None)
+▶️  System State: Running
+step executed successfully
+
+--- Step 7 ---
+current token location: sid-3B79F392-9083-4FD3-A145-556D1BB238BD
+current node name: 
+current node type: ProcessDefinition.NodeType.Gateway(ProcessDefinition.GatewayType.ParallelGateway)
+❌ System State: Error
+   Error Type: DeadlockError - No tokens can be executed in current state
+process execution ended
+[STEP 2] Test execution completed successfully. 
+---------------------------------------- 
+ 
+======================================== 
+Test Execution Summary (SAMPLE) 
+Total files processed: 3 
+Successful tests: 3 
+Failed tests: 0 
+Test execution finished at: Tue 06/10/2025 17:27:31.09 
+======================================== 
